@@ -101,30 +101,23 @@ class Find extends Round {
   private mode=rand(6);
   private target=0;
   private buildings:Building[]=[];
-  private choices: string[]=[];
+  private campusAnomaly=0;
   constructor(api:Api, stage:number){
     super(api,stage); this.duration=10/this.speed;
     if(this.mode>=4){
       this.buildings=this.mode===4?waseda:toyama;
-      this.target=rand(4); this.choices=this.buildings.slice(0,4).map(b=>b.name);
-      this.duration+=2.3/this.speed;
+      this.target=rand(this.buildings.length);
+      this.campusAnomaly=rand(3);
     } else { this.target=this.mode===3?0:this.mode; }
   }
-  controls(){ if(this.mode<4||this.elapsed<2.3/this.speed)return[]; return this.choices.map((label,i)=>({label,action:`choice-${i}`,key:String(i+1)})); }
   private answer(correct:boolean){
-    const name=this.mode<4?places[this.target].name:this.choices[this.target];
+    const name=this.mode<4?places[this.target].name:this.buildings[this.target].name;
     this.end(correct,correct?`${name}の異変を発見。`:`異変は${name}だった。`);
-  }
-  action(s:string){
-    if(this.mode<4||this.elapsed<2.3/this.speed)return;
-    if(!s.startsWith('choice-'))return;
-    this.answer(Number(s.slice(7))===this.target);
   }
   pointer(x:number,y:number){
     if(this.mode>=4){
-      if(this.elapsed<2.3/this.speed)return;
-      const i=this.buildings.slice(0,4).findIndex(b=>x>b.x-15&&x<b.x+b.w+15&&y>b.y-15&&y<b.y+b.h+15);
-      if(i>=0)this.action(`choice-${i}`);
+      const b=this.buildings[this.target];
+      this.answer(x>=b.x-12&&x<=b.x+b.w+12&&y>=b.y-12&&y<=b.y+b.h+12);
     } else {
       const p=places[this.target];
       this.answer(((x-p.x)/p.rx)**2+((y-p.y)/p.ry)**2<=1);
@@ -153,21 +146,43 @@ class Find extends Round {
     label(c,'南西諸島は省略',30,551); c.restore();
   }
   private drawCampus(c:CanvasRenderingContext2D){
-    const preview=this.elapsed<2.3/this.speed;
-    this.hint=preview?'配置を記憶。まもなく建物がひとつ消える。':'なくなった建物をタップ、または下から選ぶ';
     label(c,`CAMPUS PLAN / ${this.mode===4?'WASEDA':'TOYAMA'}`,30,30,C.blue);
-    text(c,preview?'配置を覚えろ':'消えた建物は、どれだ。',360,101,26,C.paper);
+    text(c,'間違っている場所をタップ',360,101,26,C.paper);
     rect(c,66,152,588,409,'#3b4438',8);
     line(c,[[88,305],[625,305]],'#7a7d65',20); line(c,[[263,168],[263,540]],'#7a7d65',21);
     line(c,[[449,165],[449,539]],'#7a7d65',19);
     [[93,186],[610,180],[604,533],[86,492],[86,522],[602,455]].forEach(([x,y])=>circle(c,x,y,13,'#657c4d'));
     this.buildings.forEach((b,i)=>{
-      if(!preview&&i===this.target)return;
+      if(i===this.target){this.drawCampusAnomaly(c,b);return;}
       rect(c,b.x+5,b.y+6,b.w,b.h,'#202e25',2);rect(c,b.x,b.y,b.w,b.h,'#b7b69a',2);
       line(c,[[b.x+6,b.y+7],[b.x+b.w-6,b.y+7]],'#d9d5b6',2);
       text(c,b.name,b.x+b.w/2,b.y+b.h/2,17,'#26352e','center',600);
     });
-    text(c,`${this.mode===4?'早稲田':'戸山'}キャンパス・記憶用の簡略図`,360,593,16,C.muted);
+    text(c,`${this.mode===4?'早稲田':'戸山'}キャンパス・簡略図`,360,593,16,C.muted);
+  }
+  private drawCampusAnomaly(c:CanvasRenderingContext2D,b:Building){
+    const {x,y,w,h}=b;
+    if(this.campusAnomaly===0){
+      rect(c,x,y,w,h,'#8a8162',2);
+      for(let i=0;i<18;i++){
+        const px=x+8+(i*31)%Math.max(1,w-16),py=y+8+(i*19)%Math.max(1,h-16);
+        rect(c,px,py,4+i%3,2,i%2?'#b2a17d':'#6c6c50',1);
+      }
+      return;
+    }
+    rect(c,x+5,y+h-8,w,13,'#1c2b2566',3);
+    if(this.campusAnomaly===1){
+      c.beginPath();c.moveTo(x+w*.48,y);c.lineTo(x+w,y+h);c.lineTo(x,y+h);c.closePath();c.fillStyle='#d1b57b';c.fill();
+      c.beginPath();c.moveTo(x+w*.48,y);c.lineTo(x+w*.62,y+h);c.lineTo(x+w,y+h);c.closePath();c.fillStyle='#8f7546';c.fill();
+      for(let i=1;i<5;i++){const t=i/5;line(c,[[x+w*.48*(1-t),y+h*t],[x+w*(.48+.52*t),y+h*t]],'#7e714f55');}
+      return;
+    }
+    rect(c,x+w*.12,y+h*.4,w*.76,h*.6,'#c2c6b2',2);
+    rect(c,x,y+h*.2,w*.25,h*.8,'#e0dfca',2);rect(c,x+w*.75,y+h*.2,w*.25,h*.8,'#e0dfca',2);
+    for(const tx of [x,x+w*.75])for(let i=0;i<3;i++)rect(c,tx+i*w/12,y+h*.08,w/20,h*.2,'#e0dfca');
+    rect(c,x+w*.35,y+h*.5,w*.3,h*.5,'#3f4c3c',w*.12);
+    line(c,[[x+w*.5,y+h*.42],[x+w*.5,y-h*.12]],'#afb89b',2);
+    c.beginPath();c.moveTo(x+w*.5,y-h*.12);c.lineTo(x+w*.8,y-h*.02);c.lineTo(x+w*.5,y+h*.08);c.closePath();c.fillStyle='#a8624c';c.fill();
   }
 }
 

@@ -8,7 +8,7 @@ async function deterministic(page:Page){
 async function start(page:Page){await page.getByRole('button',{name:'はじめる',exact:true}).click();await expect(page.locator('#transition')).toBeHidden();}
 
 test.describe('mobile touch input',()=>{
-test.use({hasTouch:true,isMobile:true});
+test.use({hasTouch:true,isMobile:true,viewport:{width:390,height:844}});
 test('mobile title, manual, direct map tap, one-miss failure and immediate restart',async({page})=>{
   await page.setViewportSize({width:390,height:844});
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
@@ -30,6 +30,33 @@ test('mobile title, manual, direct map tap, one-miss failure and immediate resta
   await expect(page.locator('#result-screen')).toBeHidden();
   expect(errors).toEqual([]);
 });
+
+for(const scenario of [
+  {name:'Waseda vacant lot',mode:4,anomaly:0,x:240,y:245},
+  {name:'Toyama pyramid',mode:5,anomaly:1,x:183,y:240},
+]){
+  test(`campus starts with an anomaly and accepts an immediate tap: ${scenario.name}`,async({page})=>{
+    await page.goto('/');
+    await page.evaluate(({mode,anomaly})=>{
+      let sample=0;
+      Math.random=()=>{
+        sample++;
+        if(sample<=7)return 0;
+        if(sample===8)return (mode+.1)/6;
+        if(sample===10)return (anomaly+.1)/3;
+        return 0;
+      };
+    },scenario);
+    await page.clock.install();
+    await page.getByRole('button',{name:'はじめる',exact:true}).click();
+    await page.clock.runFor(1300);
+    await expect(page.locator('#mission-title')).toHaveText('見つけろ。');
+    await expect(page.locator('#transition')).toBeHidden();
+    await expect(page.locator('#controls button')).toHaveCount(0);
+    await tapCanvas(page,scenario.x,scenario.y);
+    await expect(page.locator('#transition-title')).toHaveText('任務完了');
+  });
+}
 });
 
 test('timeout ends run and restart keeps the animation loop working',async({page})=>{
@@ -145,14 +172,12 @@ test('each mission has functional success, failure and escalating speed',async({
       results.maps=[];
       for(let mode=0;mode<6;mode++){
         let first=true;Math.random=()=>{if(first){first=false;return(mode+.01)/6;}return 0;};
-        const map=run('map');for(let i=0;i<240;i++)map.game.tick(.01);
-        if(mode<4){
-          const point=[[213,442],[300,394],[379,303],[208,440]][mode];
-          if(map.game.controls().length)throw new Error('Japan map must not display answer choices');
-          map.game.action(`choice-${mode<3?mode:0}`);
-          if(map.verdict.length)throw new Error('Japan map must require a direct tap');
-          map.game.pointer(...point);
-        }else map.game.action('choice-0');
+        const map=run('map');
+        const point=[[213,442],[300,394],[379,303],[208,440],[240,245],[183,240]][mode];
+        if(map.game.controls().length)throw new Error('Maps must not display answer choices');
+        map.game.action(`choice-${mode<3?mode:0}`);
+        if(map.verdict.length)throw new Error('Maps must require a direct tap');
+        map.game.pointer(...point);
         (results.maps as unknown[]).push(map.verdict[0]?.ok);
       }
     }finally{Math.random=original;}
