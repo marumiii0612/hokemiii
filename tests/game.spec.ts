@@ -25,6 +25,7 @@ test('mobile title, manual, direct map tap, one-miss failure and immediate resta
   await tapCanvas(page,512,135);
   await expect(page.locator('#result-screen h1')).toHaveText('任務失敗。');
   await expect(page.locator('#final-score')).toHaveText('0');
+  await expect(page.locator('#result-rank')).toHaveText('あなたはKEKKANです');
   await page.getByRole('button',{name:'もう一度、潜入する'}).click();
   await expect(page.locator('#stage-number')).toHaveText('01');
   await expect(page.locator('#result-screen')).toBeHidden();

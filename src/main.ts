@@ -2,6 +2,7 @@ import './style.css';
 import { Audio } from './audio';
 import { createRound, missions, type GameId, type Round } from './games';
 import { C, W, H, rect, shuffle } from './draw';
+import { getRank } from './rank';
 
 const mark = '<svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="m20 3 17 17-17 17L3 20Z" stroke="currentColor"/><path d="M20 11v18M11 20h18" stroke="currentColor"/><circle cx="20" cy="20" r="5" stroke="currentColor"/></svg>';
 const arrow='<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.5"/></svg>';
@@ -51,6 +52,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
       <div class="result-symbol">${mark}</div><span class="eyebrow">OPERATION COMPLETE</span><h1>任務終了<span>。</span></h1>
       <p id="result-message" class="result-message"></p>
       <div class="score-block"><span>到達記録</span><div><strong id="final-score">0</strong><span>STAGES<br>CLEARED</span></div></div>
+      <p id="result-rank" class="result-rank" hidden><span>あなたは</span><strong id="rank-name"></strong><span>です</span></p>
       <p id="new-record" class="new-record" hidden>NEW PERSONAL BEST</p>
       <div class="result-best">自己最高記録 <strong id="result-best">0</strong> STAGES</div>
       <button id="retry-button" class="primary-button">もう一度、潜入する ${arrow}</button>
@@ -126,11 +128,12 @@ function finishRound(ok:boolean,message:string){
   }
   el('controls').querySelectorAll('button').forEach(b=>b.disabled=true);
 }
-function endRun(){
+function endRun(failed=true){
   state='result';paused=false;el('pause-panel').hidden=true;round=null;showScreen('result');
-  el('result-screen').querySelector('h1')!.innerHTML='任務失敗<span>。</span>';
-  el('result-screen').querySelector('.eyebrow')!.textContent='OPERATION FAILED';
+  el('result-screen').querySelector('h1')!.innerHTML=failed?'任務失敗<span>。</span>':'任務終了<span>。</span>';
+  el('result-screen').querySelector('.eyebrow')!.textContent=failed?'OPERATION FAILED':'OPERATION COMPLETE';
   el('final-score').textContent=String(cleared);el('result-message').textContent=finalReason;
+  el('rank-name').textContent=getRank(cleared);el('result-rank').hidden=!failed;
   el('new-record').hidden=best<=oldBest;updateBest();el('retry-button').focus({preventScroll:true});
 }
 function setPaused(value:boolean){
@@ -196,7 +199,7 @@ window.addEventListener('blur',()=>setPaused(true));
 el('start-button').onclick=begin;el('retry-button').onclick=begin;el('back-button').onclick=title;
 el('home-button').onclick=()=>{if(state==='title'||state==='result')title();else setPaused(true);};
 el('pause-button').onclick=()=>setPaused(!paused);el('resume-button').onclick=()=>setPaused(false);
-el('quit-button').onclick=()=>{finalReason='任務から帰還した。';endRun();el('result-screen').querySelector('h1')!.innerHTML='任務終了<span>。</span>';el('result-screen').querySelector('.eyebrow')!.textContent='OPERATION COMPLETE';};
+el('quit-button').onclick=()=>{finalReason='任務から帰還した。';endRun(false);};
 el('sound-button').onclick=()=>{audio.enabled=!audio.enabled;audio.unlock();updateSound();try{localStorage.setItem('sennyu-sound',audio.enabled?'on':'off');}catch{}};
 el('help-button').onclick=()=>el<HTMLDialogElement>('help-dialog').showModal();
 el('close-help').onclick=()=>el<HTMLDialogElement>('help-dialog').close();
