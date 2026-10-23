@@ -10,7 +10,7 @@ const soundIcon='<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d
 document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
   <div class="site-frame">
     <header class="site-header">
-      <button class="brand" id="home-button" aria-label="タイトルへ">${mark}<span>潜入<span class="brand-en">FIELD TEST</span></span></button>
+      <button class="brand" id="home-button" aria-label="タイトルへ">${mark}<span>HOKEMI<span class="brand-en">FIELD TEST</span></span></button>
       <div class="header-right"><span class="classified">極秘<span> / CLASSIFIED</span></span><button id="sound-button" class="icon-button sound-button" aria-label="音をオフにする" aria-pressed="true">${soundIcon}<span>ON</span></button></div>
     </header>
 
@@ -19,7 +19,8 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
       <div class="title-meta"><span class="status-dot"></span> SINGLE PLAYER <span class="meta-divider">/</span> 8 MISSIONS</div>
       <div class="title-content">
         <span class="eyebrow">THE FIELD IS WAITING.</span>
-        <h1><button id="start-button" class="start-button">はじめる<span class="start-arrow">${arrow}</span></button></h1>
+        <h1 class="game-title">HOKEMI</h1>
+        <button id="start-button" class="start-button">はじめる<span class="start-arrow">${arrow}</span></button>
         <p class="title-tagline">判断は、一瞬。</p>
         <div class="title-rule"></div>
         <p class="title-description">八つの任務。一度きりの判断。<br>どこまで生き残れるか。</p>
@@ -202,12 +203,12 @@ el('close-help').onclick=()=>el<HTMLDialogElement>('help-dialog').close();
 el<HTMLDialogElement>('help-dialog').addEventListener('click',e=>{if(e.target===e.currentTarget){const b=(e.currentTarget as HTMLElement).getBoundingClientRect();if(e.clientX<b.left||e.clientX>b.right||e.clientY<b.top||e.clientY>b.bottom)el<HTMLDialogElement>('help-dialog').close();}});
 function toast(s:string){el('toast').textContent=s;el('toast').hidden=false;clearTimeout(toastTimer);toastTimer=window.setTimeout(()=>el('toast').hidden=true,2800);}
 el('share-button').onclick=async()=>{
-  const shareText=`潜入｜FIELD TEST\n${cleared}ステージを突破。判断は、一瞬。\n#潜入FIELDTEST`;
+  const shareText=`HOKEMI\n${cleared}ステージを突破。判断は、一瞬。\n#HOKEMI`;
   const url=window.location.href;
   const isPublic=!['localhost','127.0.0.1','0.0.0.0','[::1]'].includes(location.hostname)&&/^https?:$/.test(location.protocol);
   const shared=shareText+(isPublic?`\n${url}`:'');
   try{
-    if(navigator.share){await navigator.share({title:'潜入｜FIELD TEST',text:shareText,...(isPublic?{url}:{})});return;}
+    if(navigator.share){await navigator.share({title:'HOKEMI',text:shareText,...(isPublic?{url}:{})});return;}
     await navigator.clipboard.writeText(shared);toast('記録をコピーしました。');
   }catch(error){
     if(error instanceof DOMException&&error.name==='AbortError')return;
