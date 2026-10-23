@@ -85,6 +85,54 @@ test('pause preserves time and best record survives reload',async({page})=>{
   await page.reload();await expect(page.locator('#title-best')).toHaveText('01');
 });
 
+for(const cleared of [30,31]){
+  test(`mission result at ${cleared} clears, with play continuing past the success threshold`,async({page})=>{
+    await deterministic(page);
+    // Stub only round outcomes so this checks the controller across 31 stages;
+    // the real mission rules are exercised separately below.
+    await page.evaluate(async()=>{
+      const modulePath='/src/games.ts';
+      const {Round}=await import(/* @vite-ignore */ modulePath);
+      Round.prototype.tick=function(){
+        Object.assign(window,{completeTestRound:(ok:boolean)=>this.end(ok,'テストの任務結果。')});
+      };
+    });
+    const finish=(ok:boolean)=>page.evaluate(ok=>{
+      (window as unknown as {completeTestRound:(ok:boolean)=>void}).completeTestRound(ok);
+    },ok);
+    await page.clock.install();
+    await page.getByRole('button',{name:'はじめる',exact:true}).click();
+    for(let stage=1;stage<=cleared;stage++){
+      await expect(page.locator('#stage-number')).toHaveText(String(stage).padStart(2,'0'));
+      await page.clock.runFor(1300);
+      await expect(page.locator('#transition')).toBeHidden();
+      await finish(true);
+      await expect(page.locator('#result-screen')).toBeHidden();
+      await page.clock.runFor(1500);
+    }
+    await expect(page.locator('#stage-number')).toHaveText(String(cleared+1));
+    await expect(page.locator('#result-screen')).toBeHidden();
+    await page.clock.runFor(1300);
+    await finish(false);
+    await expect(page.locator('#final-score')).toHaveText(String(cleared));
+    await expect(page.locator('#result-screen h1')).toHaveText(cleared>=31?'任務成功。':'任務失敗。');
+    if(cleared>=31){
+      await expect(page.locator('#result-screen .eyebrow')).toHaveText('OPERATION SUCCESS');
+      await expect(page.locator('#result-rank')).toBeHidden();
+    }else{
+      await expect(page.locator('#result-rank')).toHaveText('あなたはBEPPANです');
+    }
+    await page.getByRole('button',{name:'もう一度、潜入する'}).click();
+    await expect(page.locator('#stage-number')).toHaveText('01');
+    await expect(page.locator('#result-screen')).toBeHidden();
+    await page.clock.runFor(1300);
+    await page.getByRole('button',{name:'一時停止',exact:true}).click();
+    await page.getByRole('button',{name:'任務を終了する',exact:true}).click();
+    await expect(page.locator('#result-screen h1')).toHaveText('任務終了。');
+    await expect(page.locator('#result-screen')).not.toHaveClass(/mission-success/);
+  });
+}
+
 test('complete eight real missions, then accelerate the second loop',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await deterministic(page);await page.clock.install();
