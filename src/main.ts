@@ -102,7 +102,7 @@ function nextRound(){
   el('transition').className='transition briefing';el('transition').hidden=false;
   el('pursuer').hidden=true;
   el('transition-label').textContent=`STAGE ${String(cleared+1).padStart(2,'0')}`;el('transition-title').textContent=`${m.title}。`;el('transition-message').textContent=m.sub;
-  el('controls').replaceChildren();
+  el('controls').replaceChildren();el('controls').hidden=true;
   el('game-hint').textContent=m.sub;
   el('time-value').innerHTML=`${round.duration.toFixed(1)}<span>s</span>`;
   el('time-bar').style.width='100%';el('time-bar').classList.remove('urgent');
@@ -143,6 +143,7 @@ function updateControls(){
   const controls=round.controls();const signature=JSON.stringify(controls);
   if(signature!==controlSignature){
     controlSignature=signature;
+    el('controls').hidden=controls.length===0;
     const activeAction=(document.activeElement as HTMLElement)?.dataset.action;
     el('controls').className=`controls ${controls.length===4?'four':controls.length===2?'two':''}`;
     el('controls').replaceChildren(...controls.map(control=>{

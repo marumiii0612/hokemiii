@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { resolve } from 'node:path';
 import { readFile } from 'node:fs/promises';
+import { tapCanvas } from './helpers';
 
 test('standalone HTML needs no external assets and supports failure, restart and records offline', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -21,11 +22,12 @@ test('standalone HTML needs no external assets and supports failure, restart and
 
   await page.getByRole('button', { name: 'はじめる', exact: true }).click();
   await expect(page.locator('#transition')).toBeHidden();
-  await page.locator('#controls').getByRole('button', { name: '滋賀県' }).click();
+  await expect(page.locator('#controls')).toBeHidden();
+  await tapCanvas(page, 512, 135);
   await expect(page.locator('#result-screen h1')).toHaveText('任務失敗。');
   await page.getByRole('button', { name: 'もう一度、潜入する' }).click();
   await expect(page.locator('#transition')).toBeHidden();
-  await page.locator('#controls').getByRole('button', { name: '四国' }).click();
+  await tapCanvas(page, 213, 442);
   await expect(page.locator('#transition-title')).toHaveText('任務完了');
   await page.reload();
   await expect(page.locator('#title-best')).toHaveText('01');

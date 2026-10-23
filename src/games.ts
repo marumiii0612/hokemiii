@@ -6,13 +6,13 @@ export type Control = { label: string; action: string; key?: string };
 type Api = { finish: (ok: boolean, message: string) => void; sound: (kind: 'tap'|'shoot'|'warning') => void };
 export const missions: { id: GameId; title: string; sub: string; icon: string }[] = [
   {id:'knife',title:'刺せ',sub:'バナナが中央に来たら、ナイフを投げろ。チャンスは一度。',icon:'↟'},
-  {id:'map',title:'見つけろ',sub:'地図に潜む、ひとつの違和感を見抜け。',icon:'⌖'},
+  {id:'map',title:'見つけろ',sub:'地図の間違いを見つけて、その場所をタップ。',icon:'⌖'},
   {id:'knock',title:'伝えろ',sub:'5桁の接触コードを、自分・相手・自分・相手・自分で伝えろ。',icon:'⠿'},
   {id:'laser',title:'よけろ',sub:'予告の赤いラインから離れ、レーザーをよけ続けろ。',icon:'╳'},
   {id:'aim',title:'狙え',sub:'心臓のすぐ横の白い照準を撃て。赤い心臓は撃つな。',icon:'⊕'},
   {id:'memory',title:'覚えろ',sub:'短時間だけ表示される写真を記憶し、続く質問に答えろ。',icon:'◷'},
   {id:'chase',title:'撒け',sub:'3列の人混みを左右によけ、追っ手を振り切れ。',icon:'⇄'},
-  {id:'eat',title:'食べろ',sub:'黄色い和服の大男。10人前のチャーハンを、10タップで食べ切れ。',icon:'◒'},
+  {id:'eat',title:'食べろ',sub:'黄色い和服の大男。10人前のチャーハンを食べ切れ。',icon:'◒'},
 ];
 
 export abstract class Round {
@@ -76,8 +76,12 @@ class Knife extends Round {
   }
 }
 
-type Place={name:string;x:number;y:number};
-const places:Place[]=[{name:'四国',x:213,y:442},{name:'滋賀県',x:300,y:394},{name:'佐渡島',x:379,y:303},{name:'北海道',x:512,y:135}];
+type Place={name:string;x:number;y:number;rx:number;ry:number};
+const places:Place[]=[
+  {name:'四国',x:213,y:442,rx:63,ry:38},
+  {name:'滋賀県',x:300,y:394,rx:30,ry:32},
+  {name:'佐渡島',x:379,y:303,rx:26,ry:30},
+];
 type Building={name:string;x:number;y:number;w:number;h:number};
 const waseda:Building[]=[
   {name:'3号館',x:188,y:205,w:105,h:80},{name:'8号館',x:345,y:213,w:108,h:70},
@@ -93,7 +97,7 @@ const toyama:Building[]=[
 ];
 class Find extends Round {
   id='map' as const;
-  hint='違和感のある場所をタップ、または下から選ぶ';
+  hint='地図の間違っている場所をタップ';
   private mode=rand(6);
   private target=0;
   private buildings:Building[]=[];
@@ -104,14 +108,17 @@ class Find extends Round {
       this.buildings=this.mode===4?waseda:toyama;
       this.target=rand(4); this.choices=this.buildings.slice(0,4).map(b=>b.name);
       this.duration+=2.3/this.speed;
-    } else { this.target=this.mode===3?0:this.mode; this.choices=places.map(p=>p.name); }
+    } else { this.target=this.mode===3?0:this.mode; }
   }
-  controls(){ if(this.mode>=4&&this.elapsed<2.3/this.speed)return[]; return this.choices.map((label,i)=>({label,action:`choice-${i}`,key:String(i+1)})); }
+  controls(){ if(this.mode<4||this.elapsed<2.3/this.speed)return[]; return this.choices.map((label,i)=>({label,action:`choice-${i}`,key:String(i+1)})); }
+  private answer(correct:boolean){
+    const name=this.mode<4?places[this.target].name:this.choices[this.target];
+    this.end(correct,correct?`${name}の異変を発見。`:`異変は${name}だった。`);
+  }
   action(s:string){
-    if(this.mode>=4&&this.elapsed<2.3/this.speed)return;
+    if(this.mode<4||this.elapsed<2.3/this.speed)return;
     if(!s.startsWith('choice-'))return;
-    const i=Number(s.slice(7));
-    this.end(i===this.target,i===this.target?`${this.choices[this.target]}の異変を発見。`:`異変は${this.choices[this.target]}だった。`);
+    this.answer(Number(s.slice(7))===this.target);
   }
   pointer(x:number,y:number){
     if(this.mode>=4){
@@ -119,8 +126,8 @@ class Find extends Round {
       const i=this.buildings.slice(0,4).findIndex(b=>x>b.x-15&&x<b.x+b.w+15&&y>b.y-15&&y<b.y+b.h+15);
       if(i>=0)this.action(`choice-${i}`);
     } else {
-      const i=places.findIndex(p=>Math.hypot(x-p.x,y-p.y)<(p.name==='四国'?63:44));
-      if(i>=0)this.action(`choice-${i}`);
+      const p=places[this.target];
+      this.answer(((x-p.x)/p.rx)**2+((y-p.y)/p.ry)**2<=1);
     }
   }
   draw(c:CanvasRenderingContext2D){
@@ -142,7 +149,6 @@ class Find extends Round {
       [[-50,-12],[-30,-25],[-10,-20],[2,-39],[10,-16],[30,-30],[43,-10],[47,9],[36,19],[12,27],[-8,14],[-35,22],[-50,12]].forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));
       c.closePath(); c.fillStyle='#a4ad88';c.fill();c.strokeStyle='#6c7b68';c.stroke();c.restore();
     }
-    places.forEach((p,i)=>{circle(c,p.x,p.y,p.name==='四国'?55:30,'#dae0bd55',true);text(c,String(i+1),p.x+30,p.y-26,14,C.paper);});
     line(c,[[628,87],[628,132]],C.paper);text(c,'N',628,69,15,C.paper);text(c,'▲',628,86,13,C.paper);
     label(c,'南西諸島は省略',30,551); c.restore();
   }
@@ -169,16 +175,16 @@ class Knock extends Round {
   id='knock' as const;
   successDuration=1.45;
   hint='光っている数字の回数だけノック。青い番は相手が返す。';
-  private code=Array.from({length:5},()=>1+rand(this.stage>12?4:3));
+  private code=Array.from({length:5},()=>Math.min(6,2+Math.floor((this.stage-1)/8))+rand(4));
   private turn=0; private taps=0; private delay=0; private lastAuto=0; private ripples:number[]=[];
   private doorOpening=0;
-  constructor(api:Api,stage:number){super(api,stage);this.duration=23/this.speed;}
-  controls(){return this.turn===5?[]:[{label:this.turn%2?'応答を待て…':`ノック ${this.taps} / ${this.code[this.turn]}`,action:'primary',key:'SPACE'}];}
+  constructor(api:Api,stage:number){super(api,stage);this.duration=16/this.speed;}
+  controls(){return this.turn===5?[]:[{label:this.turn%2?'応答を待て…':'ノック',action:'primary',key:'SPACE'}];}
   animateSuccess(dt:number){if(this.turn===5)this.doorOpening=Math.min(1,this.doorOpening+dt/.8);}
   protected update(dt:number){
     this.ripples=this.ripples.map(r=>r+dt).filter(r=>r<.7);
     if(this.delay>0){this.delay-=dt;if(this.delay<=0){this.turn++;this.taps=0;this.lastAuto=this.elapsed;if(this.turn===5)this.end(true,'接触コード、照合完了。');}return;}
-    if(this.turn%2&&this.elapsed-this.lastAuto>.5/this.speed){this.lastAuto=this.elapsed;this.knock();}
+    if(this.turn%2&&this.elapsed-this.lastAuto>.32/this.speed){this.lastAuto=this.elapsed;this.knock();}
   }
   private knock(){this.taps++;this.api.sound('tap');this.ripples.push(0);if(this.taps===this.code[this.turn])this.delay=.55/this.speed;}
   action(s:string){
@@ -361,15 +367,45 @@ class Memory extends Round {
     const ha=(this.time.h%12+this.time.m/60)*Math.PI/6, ma=this.time.m*Math.PI/30;
     line(c,[[563,151],[563+Math.sin(ha)*22,151-Math.cos(ha)*22]],'#27372d',4);
     line(c,[[563,151],[563+Math.sin(ma)*31,151-Math.cos(ma)*31]],'#27372d',2);
-    for(let i=0;i<6;i++){rect(c,50,303+i*43,620,43,this.floor.hex);line(c,[[50,304+i*43],[670,304+i*43]],'#ffffff38',2);}
+    c.save();c.beginPath();c.rect(50,81,620,487);c.clip();
+    const shade=(factor:number)=>`rgb(${[1,3,5].map(i=>Math.round(parseInt(this.floor.hex.slice(i,i+2),16)*factor)).join(',')})`;
+    rect(c,50,296,620,272,shade(.78));
+    for(let i=0;i<6;i++){
+      const x=140-i*18,y=296+i*42,right=720-x;
+      c.beginPath();c.moveTo(x,y);c.lineTo(right,y);c.lineTo(right+18,y+19);c.lineTo(x-18,y+19);c.closePath();
+      c.fillStyle=shade(1.2);c.fill();
+      const riser=c.createLinearGradient(0,y+19,0,y+42);
+      riser.addColorStop(0,shade(.88));riser.addColorStop(1,shade(.64));
+      c.fillStyle=riser;c.fillRect(x-18,y+19,right-x+36,23);
+      line(c,[[x-18,y+19],[right+18,y+19]],'#f0e9d666',2);
+      line(c,[[x,y],[x-18,y+19]],'#ffffff25');
+      line(c,[[right,y],[right+18,y+19]],'#ffffff25');
+    }
+    for(let i=0;i<5;i++){
+      const y=290+i*42,x=123-i*18;
+      line(c,[[x,y],[x,y+40]],'#abb4a1',4);line(c,[[720-x,y],[720-x,y+40]],'#abb4a1',4);
+    }
+    line(c,[[123,290],[51,458]],'#d0d0b7',6);line(c,[[597,290],[669,458]],'#d0d0b7',6);
     for(let i=0;i<this.count-1;i++){
       const row=i<4?0:1, col=row?i-4:i;
       const x=row?280+col*92:205+col*102;
-      person(c,x,366+row*85,.84,row?'#323d3c':i%2?'#273038':'#424640',i%3?'#bd9c81':'#d0b398');
-      c.save();c.translate(x,366+row*85);line(c,[[0,-53],[0,-29]],'#d8d6c0',4);line(c,[[0,-47],[0,-29]],'#7d413c',2);c.restore();
+      const y=304+row*84;
+      c.beginPath();c.ellipse(x,y+13,22,6,0,0,Math.PI*2);c.fillStyle='#17201755';c.fill();
+      person(c,x,y,.84,row?'#323d3c':i%2?'#273038':'#424640',i%3?'#bd9c81':'#d0b398');
+      c.save();c.translate(x,y);line(c,[[0,-53],[0,-29]],'#d8d6c0',4);line(c,[[0,-47],[0,-29]],'#7d413c',2);c.restore();
     }
-    person(c,139,503,1.05,this.uniform.hex,'#b79475');rect(c,121,402,36,6,'#d6d1b3',2);
-    line(c,[[126,441],[136,441]],'#eee8c1',3);
+    c.beginPath();c.ellipse(139,525,27,8,0,0,Math.PI*2);c.fillStyle='#17201766';c.fill();
+    person(c,139,508,1.05,this.uniform.hex,'#b79475');
+    rect(c,120,406,38,8,this.uniform.hex,3);rect(c,144,410,23,4,this.uniform.hex,2);
+    rect(c,126,445,9,12,'#d8dec680',1);rect(c,143,445,9,12,'#d8dec650',1);
+    line(c,[[125,481],[153,481]],'#37463e',4);
+    c.save();c.translate(166,483);c.rotate(.35);
+    line(c,[[0,12],[0,-33]],'#263a38',10);line(c,[[0,12],[0,-33]],'#d8e2dc',6);
+    c.beginPath();
+    [[-7,-30],[-14,-40],[-10,-53],[-5,-41],[5,-41],[10,-53],[14,-40],[7,-30]].forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));
+    c.closePath();c.fillStyle='#e2e9e2';c.fill();
+    circle(c,0,13,5,'#e2e9e2');circle(c,0,13,2,'#4b6259');c.restore();
+    c.restore();
     rect(c,53,535,614,31,'#101a13b0');text(c,'記録写真  /  人物・衣服・床・時刻を記憶せよ',360,551,14,C.paper);
     text(c,`残り ${Math.max(1,Math.ceil(this.viewTime-this.elapsed))} 秒`,360,611,18,C.gold);vignette(c);
   }
@@ -392,7 +428,7 @@ class Chase extends Round {
     }
     this.walkers.forEach(w=>{
       const old=w.z;w.z+=dt*.39*this.speed;
-      if(w.z>.88&&old<1.04&&w.z<1.08&&w.lane===this.lane)this.end(false,'人混みに行く手を阻まれた。');
+      if(old<1&&w.z>=1&&Math.abs(this.px-(190+w.lane*170))<32)this.end(false,'人混みに行く手を阻まれた。');
     });
     this.walkers=this.walkers.filter(w=>w.z<1.18);
   }
@@ -413,7 +449,7 @@ class Chase extends Round {
       line(c,[[360-z*260,y],[360+z*260,y]],'#79716640',2);
     }
     [...this.walkers].sort((a,b)=>a.z-b.z).forEach(w=>{
-      const z=Math.pow(w.z,1.55),x=360+(w.lane-1)*(35+z*155),y=292+z*290;
+      const z=Math.pow(w.z,1.55),x=360+(w.lane-1)*(35+z*135),y=292+z*290;
       circle(c,x,y+5,10+z*24,'#00000045');person(c,x,y,.25+z*1.15,w.color,'#b8a18d',Math.sin(this.elapsed*12)*4);
     });
     circle(c,this.px,602,35,'#00000075');person(c,this.px,566,1.05,'#141c24','#5b625d',Math.sin(this.elapsed*17)*9);
@@ -424,11 +460,11 @@ class Chase extends Round {
 
 class Eat extends Round {
   id='eat' as const;
-  hint='画面を10回タップして、チャーハン10人前を食べ切る';
+  hint='画面を連打して、チャーハンを食べ切る';
   private portions=0; private bite=0;
   private grains:{x:number;y:number;vx:number;vy:number;life:number}[]=[];
   constructor(api:Api,stage:number){super(api,stage);this.duration=5.5/this.speed;}
-  controls(){return[{label:`食べる  ${this.portions} / 10 人前`,action:'primary',key:'SPACE'}];}
+  controls(){return[{label:'食べる',action:'primary',key:'SPACE'}];}
   action(s:string){
     if(s!=='primary'||this.ended)return;this.portions++;this.bite=.2;this.api.sound('tap');
     for(let i=0;i<7;i++)this.grains.push({x:360,y:375,vx:(Math.random()-.5)*220,vy:-80-Math.random()*150,life:.55});
@@ -462,8 +498,7 @@ class Eat extends Round {
       c.beginPath();c.ellipse(360,516,83-(this.portions*5),Math.max(6,34-this.portions*3),0,Math.PI,0);c.fillStyle='#cead62';c.fill();
       for(let i=0;i<28;i++){const x=360+Math.sin(i*2.4)*(68-this.portions*4),y=510-Math.abs(Math.cos(i*1.7))*(24-this.portions*2);rect(c,x,y,5,3,i%4===0?'#798550':i%5===0?'#ba7050':'#e6c579',1);}
     }
-    for(let i=0;i<10;i++){rect(c,71+i*59,586,46,9,i<this.portions?'#d2bd76':'#77735b',2);}
-    text(c,`${this.portions} / 10 人前`,360,558,19,C.paper,'center',600);
+    text(c,'TAP TO EAT',360,589,14,C.gold);
     this.grains.forEach(g=>rect(c,g.x,g.y,5,3,'#e6c579',1));vignette(c);
   }
 }
