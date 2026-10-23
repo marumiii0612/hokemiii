@@ -33,18 +33,19 @@ test('mobile title, manual, direct map tap, one-miss failure and immediate resta
 });
 
 for(const scenario of [
-  {name:'Waseda vacant lot',mode:4,anomaly:0,x:240,y:245},
-  {name:'Toyama pyramid',mode:5,anomaly:1,x:183,y:240},
+  {name:'missing Shikoku',sample:0,x:213,y:442},
+  {name:'missing Shiga',sample:.3,x:300,y:394},
+  {name:'missing Sado',sample:.6,x:379,y:303},
+  {name:'Australia replacing Shikoku',sample:.999999,x:208,y:440},
 ]){
-  test(`campus starts with an anomaly and accepts an immediate tap: ${scenario.name}`,async({page})=>{
+  test(`Japan anomaly accepts an immediate tap: ${scenario.name}`,async({page})=>{
     await page.goto('/');
-    await page.evaluate(({mode,anomaly})=>{
+    await page.evaluate(({sample:mapSample})=>{
       let sample=0;
       Math.random=()=>{
         sample++;
         if(sample<=7)return 0;
-        if(sample===8)return (mode+.1)/6;
-        if(sample===10)return (anomaly+.1)/3;
+        if(sample===8)return mapSample;
         return 0;
       };
     },scenario);
@@ -217,12 +218,12 @@ test('each mission has functional success, failure and escalating speed',async({
       Math.random=()=>0;
       const memory=run('memory');memory.game.action('choice-0');results.memoryHidden=memory.verdict.length===0;for(let i=0;i<310;i++)memory.game.tick(.01);memory.game.action('choice-0');results.memory=memory.verdict[0]?.ok===false; // shuffled first choice is gray, not red
       results.speeds=[1,9,17,25].map(stage=>Number(run('eat',stage).game.duration.toFixed(3)));
-      // Every geographic and campus anomaly can be recognized and selected.
+      // Every Japanese geographic anomaly can be recognized and selected.
       results.maps=[];
-      for(let mode=0;mode<6;mode++){
-        let first=true;Math.random=()=>{if(first){first=false;return(mode+.01)/6;}return 0;};
+      for(let mode=0;mode<4;mode++){
+        let first=true;Math.random=()=>{if(first){first=false;return(mode+.01)/4;}return 0;};
         const map=run('map');
-        const point=[[213,442],[300,394],[379,303],[208,440],[240,245],[183,240]][mode];
+        const point=[[213,442],[300,394],[379,303],[208,440]][mode];
         if(map.game.controls().length)throw new Error('Maps must not display answer choices');
         map.game.action(`choice-${mode<3?mode:0}`);
         if(map.verdict.length)throw new Error('Maps must require a direct tap');
@@ -232,5 +233,5 @@ test('each mission has functional success, failure and escalating speed',async({
     }finally{Math.random=original;}
     return results;
   });
-  expect(result).toEqual({knife:true,aim:true,heartRejected:true,laserCollision:true,chaseCollision:true,lateChaseDodge:true,eatNeedsTen:true,eat:true,noEatCounter:true,overknock:true,noKnockCounter:true,knockAllowsNine:true,knockRejectsTen:true,memoryHidden:true,memory:true,speeds:[5.5,4.583,3.929,3.438],maps:[true,true,true,true,true,true]});
+  expect(result).toEqual({knife:true,aim:true,heartRejected:true,laserCollision:true,chaseCollision:true,lateChaseDodge:true,eatNeedsTen:true,eat:true,noEatCounter:true,overknock:true,noKnockCounter:true,knockAllowsNine:true,knockRejectsTen:true,memoryHidden:true,memory:true,speeds:[5.5,4.583,3.929,3.438],maps:[true,true,true,true]});
 });

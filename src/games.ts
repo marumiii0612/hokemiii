@@ -6,7 +6,7 @@ export type Control = { label: string; action: string; key?: string };
 type Api = { finish: (ok: boolean, message: string) => void; sound: (kind: 'tap'|'shoot'|'warning') => void };
 export const missions: { id: GameId; title: string; sub: string; icon: string }[] = [
   {id:'knife',title:'刺せ',sub:'バナナが中央に来たら、ナイフを投げろ。チャンスは一度。',icon:'↟'},
-  {id:'map',title:'見つけろ',sub:'地図の間違いを見つけて、その場所をタップ。',icon:'⌖'},
+  {id:'map',title:'見つけろ',sub:'日本地図の間違いを見つけて、その場所をタップ。',icon:'⌖'},
   {id:'knock',title:'伝えろ',sub:'5桁の接触コードを、自分・相手・自分・相手・自分で伝えろ。',icon:'⠿'},
   {id:'laser',title:'よけろ',sub:'予告の赤いラインから離れ、レーザーをよけ続けろ。',icon:'╳'},
   {id:'aim',title:'狙え',sub:'心臓のすぐ横の白い照準を撃て。赤い心臓は撃つな。',icon:'⊕'},
@@ -82,50 +82,25 @@ const places:Place[]=[
   {name:'滋賀県',x:300,y:394,rx:30,ry:32},
   {name:'佐渡島',x:379,y:303,rx:26,ry:30},
 ];
-type Building={name:string;x:number;y:number;w:number;h:number};
-const waseda:Building[]=[
-  {name:'3号館',x:188,y:205,w:105,h:80},{name:'8号館',x:345,y:213,w:108,h:70},
-  {name:'14号館',x:120,y:355,w:110,h:90},{name:'大隈講堂',x:481,y:397,w:108,h:80},
-  {name:'6号館',x:350,y:340,w:83,h:69},{name:'7号館',x:245,y:330,w:70,h:67},
-  {name:'9号館',x:480,y:215,w:74,h:115},{name:'11号館',x:345,y:460,w:93,h:72},
-];
-const toyama:Building[]=[
-  {name:'31号館',x:129,y:200,w:109,h:81},{name:'33号館',x:300,y:214,w:113,h:70},
-  {name:'36号館',x:470,y:327,w:110,h:100},{name:'38号館',x:190,y:449,w:135,h:69},
-  {name:'32号館',x:125,y:337,w:102,h:66},{name:'34号館',x:300,y:340,w:96,h:90},
-  {name:'37号館',x:462,y:475,w:120,h:62},{name:'学生会館',x:484,y:192,w:105,h:80},
-];
 class Find extends Round {
   id='map' as const;
   hint='地図の間違っている場所をタップ';
-  private mode=rand(6);
+  private mode=rand(4);
   private target=0;
-  private buildings:Building[]=[];
-  private campusAnomaly=0;
   constructor(api:Api, stage:number){
     super(api,stage); this.duration=10/this.speed;
-    if(this.mode>=4){
-      this.buildings=this.mode===4?waseda:toyama;
-      this.target=rand(this.buildings.length);
-      this.campusAnomaly=rand(3);
-    } else { this.target=this.mode===3?0:this.mode; }
+    this.target=this.mode===3?0:this.mode;
   }
   private answer(correct:boolean){
-    const name=this.mode<4?places[this.target].name:this.buildings[this.target].name;
+    const name=places[this.target].name;
     this.end(correct,correct?`${name}の異変を発見。`:`異変は${name}だった。`);
   }
   pointer(x:number,y:number){
-    if(this.mode>=4){
-      const b=this.buildings[this.target];
-      this.answer(x>=b.x-12&&x<=b.x+b.w+12&&y>=b.y-12&&y<=b.y+b.h+12);
-    } else {
-      const p=places[this.target];
-      this.answer(((x-p.x)/p.rx)**2+((y-p.y)/p.ry)**2<=1);
-    }
+    const p=places[this.target];
+    this.answer(((x-p.x)/p.rx)**2+((y-p.y)/p.ry)**2<=1);
   }
   draw(c:CanvasRenderingContext2D){
     rect(c,0,0,W,H,'#17292d'); grid(c,48,'#1f3539');
-    if(this.mode>=4){ this.drawCampus(c); return; }
     label(c,'GEOGRAPHIC INTELLIGENCE / JP',28,30,C.blue);
     text(c,'日本列島に、ひとつの異変。',360,600,20,C.paper);
     c.save();
@@ -144,45 +119,6 @@ class Find extends Round {
     }
     line(c,[[628,87],[628,132]],C.paper);text(c,'N',628,69,15,C.paper);text(c,'▲',628,86,13,C.paper);
     label(c,'南西諸島は省略',30,551); c.restore();
-  }
-  private drawCampus(c:CanvasRenderingContext2D){
-    label(c,`CAMPUS PLAN / ${this.mode===4?'WASEDA':'TOYAMA'}`,30,30,C.blue);
-    text(c,'間違っている場所をタップ',360,101,26,C.paper);
-    rect(c,66,152,588,409,'#3b4438',8);
-    line(c,[[88,305],[625,305]],'#7a7d65',20); line(c,[[263,168],[263,540]],'#7a7d65',21);
-    line(c,[[449,165],[449,539]],'#7a7d65',19);
-    [[93,186],[610,180],[604,533],[86,492],[86,522],[602,455]].forEach(([x,y])=>circle(c,x,y,13,'#657c4d'));
-    this.buildings.forEach((b,i)=>{
-      if(i===this.target){this.drawCampusAnomaly(c,b);return;}
-      rect(c,b.x+5,b.y+6,b.w,b.h,'#202e25',2);rect(c,b.x,b.y,b.w,b.h,'#b7b69a',2);
-      line(c,[[b.x+6,b.y+7],[b.x+b.w-6,b.y+7]],'#d9d5b6',2);
-      text(c,b.name,b.x+b.w/2,b.y+b.h/2,17,'#26352e','center',600);
-    });
-    text(c,`${this.mode===4?'早稲田':'戸山'}キャンパス・簡略図`,360,593,16,C.muted);
-  }
-  private drawCampusAnomaly(c:CanvasRenderingContext2D,b:Building){
-    const {x,y,w,h}=b;
-    if(this.campusAnomaly===0){
-      rect(c,x,y,w,h,'#8a8162',2);
-      for(let i=0;i<18;i++){
-        const px=x+8+(i*31)%Math.max(1,w-16),py=y+8+(i*19)%Math.max(1,h-16);
-        rect(c,px,py,4+i%3,2,i%2?'#b2a17d':'#6c6c50',1);
-      }
-      return;
-    }
-    rect(c,x+5,y+h-8,w,13,'#1c2b2566',3);
-    if(this.campusAnomaly===1){
-      c.beginPath();c.moveTo(x+w*.48,y);c.lineTo(x+w,y+h);c.lineTo(x,y+h);c.closePath();c.fillStyle='#d1b57b';c.fill();
-      c.beginPath();c.moveTo(x+w*.48,y);c.lineTo(x+w*.62,y+h);c.lineTo(x+w,y+h);c.closePath();c.fillStyle='#8f7546';c.fill();
-      for(let i=1;i<5;i++){const t=i/5;line(c,[[x+w*.48*(1-t),y+h*t],[x+w*(.48+.52*t),y+h*t]],'#7e714f55');}
-      return;
-    }
-    rect(c,x+w*.12,y+h*.4,w*.76,h*.6,'#c2c6b2',2);
-    rect(c,x,y+h*.2,w*.25,h*.8,'#e0dfca',2);rect(c,x+w*.75,y+h*.2,w*.25,h*.8,'#e0dfca',2);
-    for(const tx of [x,x+w*.75])for(let i=0;i<3;i++)rect(c,tx+i*w/12,y+h*.08,w/20,h*.2,'#e0dfca');
-    rect(c,x+w*.35,y+h*.5,w*.3,h*.5,'#3f4c3c',w*.12);
-    line(c,[[x+w*.5,y+h*.42],[x+w*.5,y-h*.12]],'#afb89b',2);
-    c.beginPath();c.moveTo(x+w*.5,y-h*.12);c.lineTo(x+w*.8,y-h*.02);c.lineTo(x+w*.5,y+h*.08);c.closePath();c.fillStyle='#a8624c';c.fill();
   }
 }
 
