@@ -1,0 +1,20 @@
+{
+  "name": "sennyu-field-test",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "tsc --noEmit && vite build && node scripts/export-html.mjs",
+    "build:pages": "npm run build && node scripts/export-pages.mjs",
+    "preview": "vite preview --host 0.0.0.0",
+    "pretest": "npm run build",
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^24.19.2",
+    "typescript": "~5.9.3",
+    "vite": "^7.3.1"
+  }
+}
