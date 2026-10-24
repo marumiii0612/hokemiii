@@ -195,7 +195,7 @@ test('complete eight real missions, then accelerate the second loop',async({page
     await expect(page.locator('#game-hint')).toHaveText('認証成功。扉が開きます。');
     await page.clock.runFor(2000);
   }
-  await expect(page.locator('#mission-title')).toHaveText('よけろ。');
+  await expect(page.locator('#mission-title')).toHaveText('避けろ。');
   await expect(page.locator('#transition')).toBeHidden();
   await page.keyboard.press('ArrowLeft');
   const advanceLaserTo=async(seconds:number)=>{

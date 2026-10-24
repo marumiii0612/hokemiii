@@ -9,7 +9,7 @@ export const missions: { id: GameId; title: string; sub: string; icon: string }[
   {id:'knife',title:'刺せ',sub:'バナナが中央に来たら、ナイフを投げろ。チャンスは一度。',icon:'↟'},
   {id:'map',title:'見つけろ',sub:'日本地図の間違いを見つけて、その場所をタップ。',icon:'⌖'},
   {id:'knock',title:'伝えろ',sub:'紙の5桁の認証コードを覚え、自分・相手・自分・相手・自分でノック。',icon:'⠿'},
-  {id:'laser',title:'よけろ',sub:'4列の縦レーザーを左右によけ、下の横レーザーはジャンプ。',icon:'╳'},
+  {id:'laser',title:'避けろ',sub:'4列の縦レーザーを左右によけ、下の横レーザーはジャンプ。',icon:'╳'},
   {id:'aim',title:'狙え',sub:'中央から真上に1発。動く白い照準を狙え。心臓は撃つな。',icon:'⊕'},
   {id:'memory',title:'覚えろ',sub:'短時間だけ表示される写真を記憶し、続く質問に答えろ。',icon:'◷'},
   {id:'chase',title:'撒け',sub:'3列の人混みを左右によけ、追っ手を振り切れ。',icon:'⇄'},

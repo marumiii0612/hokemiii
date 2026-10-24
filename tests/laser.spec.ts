@@ -11,7 +11,7 @@ async function laserFirst(page:Page){
   await page.clock.install({time});await page.clock.pauseAt(new Date(time.getTime()+1000));
   await page.getByRole('button',{name:'はじめる',exact:true}).click();
   await page.clock.runFor(1300);
-  await expect(page.locator('#mission-title')).toHaveText('よけろ。');
+  await expect(page.locator('#mission-title')).toHaveText('避けろ。');
   await expect(page.locator('#transition')).toBeHidden();
 }
 
