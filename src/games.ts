@@ -94,7 +94,7 @@ class Find extends Round {
   }
   private answer(correct:boolean){
     const name=places[this.target].name;
-    this.end(correct,correct?`${name}の異変を発見。`:`異変は${name}だった。`);
+    this.end(correct,correct?`${name}の異変を発見。`:'異変を見つけられなかった。');
   }
   pointer(x:number,y:number){
     const p=places[this.target];
@@ -297,7 +297,7 @@ class Memory extends Round {
     this.answer=data.answer;this.options=shuffle(data.options);
   }
   controls(){return this.elapsed<this.viewTime?[]:this.options.map((label,i)=>({label,action:`choice-${i}`,key:String(i+1)}));}
-  action(s:string){if(this.elapsed<this.viewTime||!s.startsWith('choice-'))return;const yes=this.options[Number(s.slice(7))]===this.answer;this.end(yes,yes?'記憶は、正確だった。':`正解は「${this.answer}」。細部を見逃すな。`);}
+  action(s:string){if(this.elapsed<this.viewTime||!s.startsWith('choice-'))return;const yes=this.options[Number(s.slice(7))]===this.answer;this.end(yes,yes?'記憶は、正確だった。':'記憶が一致しなかった。');}
   draw(c:CanvasRenderingContext2D){
     const viewing=this.elapsed<this.viewTime;
     this.hint=viewing?`写真を${this.viewTime.toFixed(1)}秒で覚える。服、床、時計、人の数に注目。`:'正しい答えをひとつ選ぶ';

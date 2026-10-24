@@ -26,10 +26,38 @@ test('mobile title, manual, direct map tap, one-miss failure and immediate resta
   await expect(page.locator('#result-screen h1')).toHaveText('任務失敗。');
   await expect(page.locator('#final-score')).toHaveText('0');
   await expect(page.locator('#result-rank')).toHaveText('あなたはKEKKANです');
+  await expect(page.locator('#result-message')).toBeEmpty();
+  await expect(page.locator('#result-message')).toBeHidden();
+  await expect(page.locator('#result-screen')).not.toContainText('四国');
   await page.getByRole('button',{name:'もう一度、潜入する'}).click();
   await expect(page.locator('#stage-number')).toHaveText('01');
   await expect(page.locator('#result-screen')).toBeHidden();
   expect(errors).toEqual([]);
+});
+
+test('memory failure does not reveal the correct answer and supports immediate restart',async({page})=>{
+  await page.goto('/');
+  await page.evaluate(()=>{
+    let sample=0;
+    // Put memory first in the shuffle, then use the red-floor photo.
+    Math.random=()=>{sample++;return sample>=4&&sample<=7?.999:0;};
+  });
+  await page.clock.install();
+  await page.getByRole('button',{name:'はじめる',exact:true}).click();
+  await page.clock.runFor(1300);
+  await expect(page.locator('#mission-title')).toHaveText('覚えろ。');
+  await page.clock.runFor(3100);
+  await page.locator('#controls').getByRole('button',{name:'グレー',exact:true}).click();
+  await expect(page.locator('#result-screen h1')).toHaveText('任務失敗。');
+  await expect(page.locator('#result-message')).toBeEmpty();
+  await expect(page.locator('#result-message')).toBeHidden();
+  await expect(page.locator('#result-screen')).not.toContainText('深い赤');
+  await expect(page.locator('#result-screen')).not.toContainText('正解');
+  await expect(page.locator('#final-score')).toHaveText('0');
+  await expect(page.locator('#result-rank')).toHaveText('あなたはKEKKANです');
+  await page.getByRole('button',{name:'もう一度、潜入する'}).click();
+  await expect(page.locator('#stage-number')).toHaveText('01');
+  await expect(page.locator('#result-screen')).toBeHidden();
 });
 
 for(const scenario of [

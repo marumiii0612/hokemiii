@@ -50,7 +50,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
 
     <main id="result-screen" class="result-screen" hidden>
       <div class="result-symbol">${mark}</div><span class="eyebrow">OPERATION COMPLETE</span><h1>任務終了<span>。</span></h1>
-      <p id="result-message" class="result-message"></p>
+      <p id="result-message" class="result-message" hidden></p>
       <div class="score-block"><span>到達記録</span><div><strong id="final-score">0</strong><span>STAGES<br>CLEARED</span></div></div>
       <p id="result-rank" class="result-rank" hidden><span>あなたは</span><strong id="rank-name"></strong><span>です</span></p>
       <p id="new-record" class="new-record" hidden>NEW PERSONAL BEST</p>
@@ -134,7 +134,10 @@ function endRun(failed=true){
   el('result-screen').classList.toggle('mission-success',success);
   el('result-screen').querySelector('h1')!.innerHTML=success?'任務成功<span>。</span>':failed?'任務失敗<span>。</span>':'任務終了<span>。</span>';
   el('result-screen').querySelector('.eyebrow')!.textContent=success?'OPERATION SUCCESS':failed?'OPERATION FAILED':'OPERATION COMPLETE';
-  el('final-score').textContent=String(cleared);el('result-message').textContent=success?'任務を完遂した。':finalReason;
+  el('final-score').textContent=String(cleared);
+  const resultMessage=el('result-message');
+  resultMessage.textContent=success?'任務を完遂した。':failed?'':finalReason;
+  resultMessage.hidden=!resultMessage.textContent;
   el('rank-name').textContent=rank;el('result-rank').hidden=!failed||success;
   el('new-record').hidden=best<=oldBest;updateBest();el('retry-button').focus({preventScroll:true});
 }

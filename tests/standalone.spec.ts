@@ -25,6 +25,9 @@ test('standalone HTML needs no external assets and supports failure, restart and
   await expect(page.locator('#controls')).toBeHidden();
   await tapCanvas(page, 512, 135);
   await expect(page.locator('#result-screen h1')).toHaveText('任務失敗。');
+  await expect(page.locator('#result-message')).toBeEmpty();
+  await expect(page.locator('#result-message')).toBeHidden();
+  await expect(page.locator('#result-screen')).not.toContainText('四国');
   await page.getByRole('button', { name: 'もう一度、潜入する' }).click();
   await expect(page.locator('#transition')).toBeHidden();
   await tapCanvas(page, 213, 442);
