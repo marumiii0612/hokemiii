@@ -1,5 +1,6 @@
 import './style.css';
 import { Audio } from './audio';
+import { TitleMusic } from './title-music';
 import { createRound, missions, type GameId, type Round } from './games';
 import { C, W, H, rect, shuffle } from './draw';
 import { getRank } from './rank';
@@ -28,6 +29,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
         <p class="title-description">八つの任務。一度きりの判断。<br>どこまで生き残れるか。</p>
         <div class="title-record"><span>自己最高記録</span><strong id="title-best">00</strong><span>STAGES</span></div>
       </div>
+      <div class="title-bgm-controls"><button id="bgm-button" class="text-button" aria-controls="title-bgm-panel" aria-expanded="false" aria-pressed="false">BGMを再生</button></div>
+      <section id="title-bgm-panel" class="title-bgm-panel" aria-label="タイトルBGM" hidden>
+        <div id="title-bgm-player" class="title-bgm-player"></div>
+        <p id="bgm-status" class="bgm-status" role="status"></p>
+        <a class="bgm-source" href="https://youtu.be/MuGFcUggtDs" target="_blank" rel="noreferrer">この曲をYouTubeで開く ↗</a>
+      </section>
       <div class="title-bottom"><button id="help-button" class="text-button"><span class="help-symbol">?</span> 遊び方を見る</button><span class="title-id">OPERATION No. 008</span></div>
     </main>
 
@@ -65,7 +72,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
 
     <footer class="site-footer"><span>FICTIONAL OPERATIONS BUREAU</span><span>EST. 2026 <i>●</i> JP</span></footer>
   </div>
-  <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-header"><span class="eyebrow">FIELD MANUAL</span><button id="close-help" class="icon-button" aria-label="遊び方を閉じる">×</button></div><h2 id="help-title">任務の手引き<span>。</span></h2><p class="help-intro">ランダムに続く8つのミニゲーム。<br>制限時間内に成功させ、自己最高記録を目指せ。</p><div class="mission-list">${missions.map(m=>`<div class="manual-mission"><span>${m.icon}</span><div><h3>${m.title}</h3><p>${m.sub}</p></div></div>`).join('')}</div><div class="manual-note"><p>ミスするまでステージは続き、40クリアまでは任務失敗、41クリア以上は殉職。8ステージごとに1周し、2周目は1.2倍、3周目は1.4倍と加速（最大2.4倍）。20クリアで21からの再開を解放。記録はこの端末に保存されます。</p><p>PC：画面クリック・Space・矢印キー・数字1〜4。P / Escで一時停止。スマホ：画面または操作ボタンをタップ。</p></div><details><summary>このゲームについて・地図の出典</summary><p>VIVANTに着想を得た、非公式のオリジナルファンゲームです。作品の画像・音源や俳優の肖像は使用していません。記憶写真はオリジナルイラストです。</p><p>日本地図：国土地理院「地球地図日本」。dataofjapan/land の地理データを簡略化して使用。一部の島嶼は省略しています。地図データの利用条件は <a href="https://github.com/dataofjapan/land" target="_blank" rel="noreferrer">配布元</a> を参照してください。</p></details></dialog>
+  <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-header"><span class="eyebrow">FIELD MANUAL</span><button id="close-help" class="icon-button" aria-label="遊び方を閉じる">×</button></div><h2 id="help-title">任務の手引き<span>。</span></h2><p class="help-intro">ランダムに続く8つのミニゲーム。<br>制限時間内に成功させ、自己最高記録を目指せ。</p><div class="mission-list">${missions.map(m=>`<div class="manual-mission"><span>${m.icon}</span><div><h3>${m.title}</h3><p>${m.sub}</p></div></div>`).join('')}</div><div class="manual-note"><p>ミスするまでステージは続き、40クリアまでは任務失敗、41クリア以上は殉職。8ステージごとに1周し、2周目は1.2倍、3周目は1.4倍と加速（最大2.4倍）。20クリアで21からの再開を解放。記録はこの端末に保存されます。</p><p>PC：画面クリック・Space・矢印キー・数字1〜4。P / Escで一時停止。スマホ：画面または操作ボタンをタップ。</p></div><details><summary>このゲームについて・地図の出典</summary><p>VIVANTに着想を得た、非公式のオリジナルファンゲームです。作品の画像・俳優の肖像は使用していません。タイトルBGMはYouTubeの埋め込み再生、記憶写真はオリジナルイラストです。</p><p>日本地図：国土地理院「地球地図日本」。dataofjapan/land の地理データを簡略化して使用。一部の島嶼は省略しています。地図データの利用条件は <a href="https://github.com/dataofjapan/land" target="_blank" rel="noreferrer">配布元</a> を参照してください。</p></details></dialog>
   <div id="toast" class="toast" role="status" hidden></div>
 `;
 
@@ -78,12 +85,13 @@ let round:Round|null=null, bag:GameId[]=[], lastGame:GameId|null=null;
 let cleared=0,paused=false,transitionTime=0,controlSignature='',lastHint='',oldBest=best;
 let runStart:1|21=1;
 let finalReason='',lastFrame=performance.now(),toastTimer=0;
+const titleMusic=new TitleMusic(el('title-bgm-panel'),el('title-bgm-player'),el<HTMLButtonElement>('bgm-button'),el('bgm-status'));
 const canvas=el<HTMLCanvasElement>('game-canvas');
 const ctx=canvas.getContext('2d')!;
 function resizeCanvas(){const dpr=Math.min(devicePixelRatio||1,2);canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);}
 resizeCanvas();window.addEventListener('resize',resizeCanvas);
 
-function updateSound(){el('sound-button').setAttribute('aria-pressed',String(audio.enabled));el('sound-button').setAttribute('aria-label',audio.enabled?'音をオフにする':'音をオンにする');el('sound-button').querySelector('span')!.textContent=audio.enabled?'ON':'OFF';}
+function updateSound(){el('sound-button').setAttribute('aria-pressed',String(audio.enabled));el('sound-button').setAttribute('aria-label',audio.enabled?'音をオフにする':'音をオンにする');el('sound-button').querySelector('span')!.textContent=audio.enabled?'ON':'OFF';titleMusic.setContext(state==='title'&&!document.hidden,audio.enabled);}
 updateSound();
 function updateBest(){
   el('title-best').textContent=String(best).padStart(2,'0');el('result-best').textContent=String(best);
@@ -93,6 +101,7 @@ function updateBest(){
 }
 updateBest();
 function showScreen(name:'title'|'play'|'result'){
+  titleMusic.setContext(name==='title'&&!document.hidden,audio.enabled);
   for(const s of ['title','play','result'])el(`${s}-screen`).hidden=s!==name;
   document.body.dataset.screen=name;
 }
@@ -213,7 +222,7 @@ document.addEventListener('keydown',e=>{
   const action:Record<string,string>={Space:'primary',ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down',Digit1:'choice-0',Digit2:'choice-1',Digit3:'choice-2',Digit4:'choice-3',Numpad1:'choice-0',Numpad2:'choice-1',Numpad3:'choice-2',Numpad4:'choice-3'};
   if(action[e.code]){e.preventDefault();if(!e.repeat)dispatch(action[e.code]);}
 });
-document.addEventListener('visibilitychange',()=>{if(document.hidden)setPaused(true);});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)setPaused(true);titleMusic.setContext(state==='title'&&!document.hidden,audio.enabled);});
 window.addEventListener('blur',()=>setPaused(true));
 el('start-button').onclick=()=>begin();el('checkpoint-start-button').onclick=()=>begin(21);
 el('retry-button').onclick=()=>begin(runStart);el('alternate-retry-button').onclick=()=>begin(runStart===21?1:21);
@@ -221,7 +230,9 @@ el('back-button').onclick=title;
 el('home-button').onclick=()=>{if(state==='title'||state==='result')title();else setPaused(true);};
 el('pause-button').onclick=()=>setPaused(!paused);el('resume-button').onclick=()=>setPaused(false);
 el('quit-button').onclick=()=>{finalReason='任務から帰還した。';endRun(false);};
-el('sound-button').onclick=()=>{audio.enabled=!audio.enabled;audio.unlock();updateSound();try{localStorage.setItem('sennyu-sound',audio.enabled?'on':'off');}catch{}};
+function setSound(enabled:boolean){audio.enabled=enabled;audio.unlock();updateSound();try{localStorage.setItem('sennyu-sound',audio.enabled?'on':'off');}catch{}}
+el('sound-button').onclick=()=>setSound(!audio.enabled);
+el('bgm-button').onclick=()=>{const requested=titleMusic.toggle();if(requested&&!audio.enabled)setSound(true);else audio.unlock();};
 el('help-button').onclick=()=>el<HTMLDialogElement>('help-dialog').showModal();
 el('close-help').onclick=()=>el<HTMLDialogElement>('help-dialog').close();
 el<HTMLDialogElement>('help-dialog').addEventListener('click',e=>{if(e.target===e.currentTarget){const b=(e.currentTarget as HTMLElement).getBoundingClientRect();if(e.clientX<b.left||e.clientX>b.right||e.clientY<b.top||e.clientY>b.bottom)el<HTMLDialogElement>('help-dialog').close();}});
