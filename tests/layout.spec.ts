@@ -6,7 +6,7 @@ async function layout(page:Page){
       const bounds=document.querySelector(selector)!.getBoundingClientRect();
       return{x:bounds.x,y:bounds.y,width:bounds.width,height:bounds.height,bottom:bounds.bottom,right:bounds.right};
     };
-    return{canvas:box('#game-canvas'),controls:box('.controls-slot'),
+    return{header:box('.site-header'),canvas:box('#game-canvas'),controls:box('.controls-slot'),
       width:innerWidth,height:innerHeight,scrollY,documentHeight:document.documentElement.scrollHeight,
       documentWidth:document.documentElement.scrollWidth};
   });
@@ -14,10 +14,12 @@ async function layout(page:Page){
 
 async function visibleControls(page:Page){
   const bounds=await layout(page);
-  for(const box of [bounds.canvas,bounds.controls]){
+  for(const box of [bounds.header,bounds.canvas,bounds.controls]){
     expect(box.x).toBeGreaterThanOrEqual(0);expect(box.y).toBeGreaterThanOrEqual(0);
     expect(box.right).toBeLessThanOrEqual(bounds.width+.5);expect(box.bottom).toBeLessThanOrEqual(bounds.height+.5);
   }
+  expect(bounds.header.y).toBeGreaterThanOrEqual(8);
+  expect(bounds.controls.bottom).toBeLessThanOrEqual(bounds.height-8);
   expect(bounds.canvas.width).toBeGreaterThan(100);expect(bounds.canvas.height).toBeGreaterThan(80);
   expect(bounds.scrollY).toBe(0);expect(bounds.documentHeight).toBeLessThanOrEqual(bounds.height);
   expect(bounds.documentWidth).toBeLessThanOrEqual(bounds.width);
@@ -82,7 +84,7 @@ for(const size of sizes){
       const initial=await visibleControls(page);
       if(size.width<size.height){
         const screenWidth=await page.locator('#play-screen').evaluate(screen=>screen.clientWidth);
-        expect(initial.canvas.width).toBeGreaterThanOrEqual(screenWidth-3);
+        expect(initial.canvas.width).toBeGreaterThanOrEqual(screenWidth*.95-3);
       }
       for(let stage=1;stage<=8;stage++){
         await expect(page.locator('#stage-number')).toHaveText(String(stage).padStart(2,'0'));
