@@ -61,10 +61,10 @@ test('memory failure does not reveal the correct answer and supports immediate r
 });
 
 for(const scenario of [
-  {name:'missing Shikoku',sample:0,x:213,y:442},
-  {name:'missing Shiga',sample:.3,x:300,y:394},
-  {name:'missing Sado',sample:.6,x:379,y:303},
-  {name:'missing Okinawa',sample:.999999,x:590,y:505},
+  {name:'missing Shikoku',sample:0,x:330,y:336},
+  {name:'missing Shiga',sample:.3,x:392,y:301},
+  {name:'missing Sado',sample:.6,x:448,y:236},
+  {name:'missing Okinawa',sample:.999999,x:176,y:525},
 ]){
   test(`Japan anomaly accepts an immediate tap: ${scenario.name}`,async({page})=>{
     await page.goto('/');
@@ -85,10 +85,11 @@ for(const scenario of [
     await expect(page.locator('#controls button')).toHaveCount(0);
     const okinawaPixel=await page.locator('#game-canvas').evaluate((canvas:HTMLCanvasElement)=>{
       const scale=canvas.width/720;
-      return Array.from(canvas.getContext('2d')!.getImageData(Math.round(583*scale),Math.round(535*scale),1,1).data).slice(0,3);
+      return Array.from(canvas.getContext('2d')!.getImageData(Math.round(202*scale),Math.round(495*scale),1,1).data).slice(0,3);
     });
-    if(scenario.name==='missing Okinawa')expect(okinawaPixel).not.toEqual([164,173,136]);
-    else expect(okinawaPixel).toEqual([164,173,136]);
+    // The smaller island has antialiased coastal pixels; distinguish land from sea.
+    if(scenario.name==='missing Okinawa')expect(okinawaPixel[0]).toBeLessThan(50);
+    else expect(okinawaPixel[0]).toBeGreaterThan(100);
     await tapCanvas(page,scenario.x,scenario.y);
     await expect(page.locator('#transition-title')).toHaveText('任務完了');
   });
@@ -103,7 +104,7 @@ test('timeout ends run and restart keeps the animation loop working',async({page
   await page.getByRole('button',{name:'もう一度、潜入する'}).click();
   await page.clock.runFor(1500);
   await expect(page.locator('#transition')).toBeHidden();
-  await tapCanvas(page,213,442);
+  await tapCanvas(page,330,336);
   await expect(page.locator('#transition-title')).toHaveText('任務完了');
   expect(errors).toEqual([]);
 });
@@ -115,7 +116,7 @@ test('pause preserves time and best record survives reload',async({page})=>{
   await page.waitForTimeout(500);
   await expect(page.locator('#time-value')).toHaveText(left!);
   await page.getByRole('button',{name:'つづける'}).click();
-  await tapCanvas(page,213,442);
+  await tapCanvas(page,330,336);
   await expect(page.locator('#transition-title')).toHaveText('任務完了');
   await page.reload();await expect(page.locator('#title-best')).toHaveText('01');
 });
@@ -173,7 +174,7 @@ test('complete eight real missions, then accelerate the second loop',async({page
   await deterministic(page);await page.clock.install();
   await page.getByRole('button',{name:'はじめる',exact:true}).click();
   await page.clock.runFor(1300);
-  await tapCanvas(page,213,442);
+  await tapCanvas(page,330,336);
   await page.clock.runFor(2400);
   await expect(page.locator('#mission-title')).toHaveText('伝えろ。');
   for(let turn=0;turn<3;turn++){
@@ -263,7 +264,7 @@ test('each mission has functional success, failure and escalating speed',async({
       for(let mode=0;mode<4;mode++){
         let first=true;Math.random=()=>{if(first){first=false;return(mode+.01)/4;}return 0;};
         const map=run('map');
-        const point=[[213,442],[300,394],[379,303],[590,505]][mode];
+        const point=[[330,336],[392,301],[448,236],[176,525]][mode];
         if(map.game.controls().length)throw new Error('Maps must not display answer choices');
         map.game.action(`choice-${mode<3?mode:0}`);
         if(map.verdict.length)throw new Error('Maps must require a direct tap');

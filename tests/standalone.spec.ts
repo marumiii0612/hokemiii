@@ -30,7 +30,7 @@ test('standalone HTML needs no external assets and supports failure, restart and
   await expect(page.locator('#result-screen')).not.toContainText('四国');
   await page.getByRole('button', { name: 'もう一度、潜入する' }).click();
   await expect(page.locator('#transition')).toBeHidden();
-  await tapCanvas(page, 213, 442);
+  await tapCanvas(page, 330, 336);
   await expect(page.locator('#transition-title')).toHaveText('任務完了');
   await page.reload();
   await expect(page.locator('#title-best')).toHaveText('01');

@@ -82,9 +82,16 @@ const places:Place[]=[
   {name:'四国',x:213,y:442,rx:63,ry:38},
   {name:'滋賀県',x:300,y:394,rx:30,ry:32},
   {name:'佐渡島',x:379,y:303,rx:26,ry:30},
-  {name:'沖縄',x:590,y:505,rx:100,ry:60},
+  {name:'沖縄',x:-3,y:708,rx:165,ry:80},
 ];
 const mapFeatures=[...japan,...okinawa];
+const mapLayout=(()=>{
+  const points=mapFeatures.flatMap(feature=>feature.rings.flat());
+  const minX=Math.min(...points.map(([x])=>x)),maxX=Math.max(...points.map(([x])=>x));
+  const minY=Math.min(...points.map(([,y])=>y)),maxY=Math.max(...points.map(([,y])=>y));
+  const scale=Math.min(640/(maxX-minX),490/(maxY-minY));
+  return {scale,x:(W-(maxX-minX)*scale)/2-minX*scale,y:66-minY*scale};
+})();
 class Find extends Round {
   id='map' as const;
   hint='地図の間違っている場所をタップ';
@@ -98,16 +105,16 @@ class Find extends Round {
   }
   pointer(x:number,y:number){
     const p=places[this.target];
-    this.answer(((x-p.x)/p.rx)**2+((y-p.y)/p.ry)**2<=1);
+    const px=mapLayout.x+p.x*mapLayout.scale,py=mapLayout.y+p.y*mapLayout.scale;
+    const rx=Math.max(38,p.rx*mapLayout.scale),ry=Math.max(38,p.ry*mapLayout.scale);
+    this.answer(((x-px)/rx)**2+((y-py)/ry)**2<=1);
   }
   draw(c:CanvasRenderingContext2D){
     rect(c,0,0,W,H,'#17292d'); grid(c,48,'#1f3539');
     label(c,'GEOGRAPHIC INTELLIGENCE / JP',28,30,C.blue);
     text(c,'日本列島に、ひとつの異変。',360,600,20,C.paper);
-    c.save();c.setLineDash([5,5]);c.strokeStyle='#486167';c.lineWidth=1;
-    c.strokeRect(472,430,210,138);c.restore();
-    label(c,'沖縄本島周辺 / 位置を移動',477,417,C.muted);
     c.save();
+    c.translate(mapLayout.x,mapLayout.y);c.scale(mapLayout.scale,mapLayout.scale);
     mapFeatures.forEach(feature=>{
       if(this.target===0&&[36,37,38,39].includes(feature.id))return;
       if(this.target===1&&feature.id===25)return;
@@ -115,10 +122,11 @@ class Find extends Round {
       if(this.target===3&&feature.id===47)return;
       c.beginPath();
       feature.rings.forEach(r=>{r.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();});
-      c.fillStyle='#a4ad88'; c.fill('evenodd'); c.strokeStyle='#6c7b68'; c.lineWidth=.8; c.stroke();
+      c.fillStyle='#a4ad88'; c.fill('evenodd'); c.strokeStyle='#6c7b68'; c.lineWidth=.8/mapLayout.scale; c.stroke();
     });
+    c.restore();
     line(c,[[628,87],[628,132]],C.paper);text(c,'N',628,69,15,C.paper);text(c,'▲',628,86,13,C.paper);
-    label(c,'一部島嶼は省略',30,551); c.restore();
+    label(c,'一部島嶼は省略',30,574);
   }
 }
 
