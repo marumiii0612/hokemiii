@@ -1,4 +1,5 @@
 import japan from './data/japan.json';
+import okinawa from './data/okinawa.json';
 import { C, W, H, rect, text, line, circle, grid, label, cross, person, vignette, rand, pick, shuffle } from './draw';
 
 export type GameId = 'knife' | 'map' | 'knock' | 'laser' | 'aim' | 'memory' | 'chase' | 'eat';
@@ -42,7 +43,7 @@ class Knife extends Round {
   private bx=-80; private by=230; private ky=559; private thrown=false;
   constructor(api: Api, stage: number) { super(api,stage); this.duration=6/this.speed; }
   protected update(dt: number) {
-    this.bx+=185*this.speed*dt;
+    this.bx+=260*this.speed*dt;
     this.by=246-68*Math.sin(Math.max(0,(this.bx+80)/880)*Math.PI);
     if(this.thrown) {
       const old=this.ky; this.ky-=1030*dt;
@@ -81,15 +82,15 @@ const places:Place[]=[
   {name:'四国',x:213,y:442,rx:63,ry:38},
   {name:'滋賀県',x:300,y:394,rx:30,ry:32},
   {name:'佐渡島',x:379,y:303,rx:26,ry:30},
+  {name:'沖縄',x:590,y:505,rx:100,ry:60},
 ];
+const mapFeatures=[...japan,...okinawa];
 class Find extends Round {
   id='map' as const;
   hint='地図の間違っている場所をタップ';
-  private mode=rand(4);
-  private target=0;
+  private target=rand(places.length);
   constructor(api:Api, stage:number){
     super(api,stage); this.duration=10/this.speed;
-    this.target=this.mode===3?0:this.mode;
   }
   private answer(correct:boolean){
     const name=places[this.target].name;
@@ -103,22 +104,21 @@ class Find extends Round {
     rect(c,0,0,W,H,'#17292d'); grid(c,48,'#1f3539');
     label(c,'GEOGRAPHIC INTELLIGENCE / JP',28,30,C.blue);
     text(c,'日本列島に、ひとつの異変。',360,600,20,C.paper);
+    c.save();c.setLineDash([5,5]);c.strokeStyle='#486167';c.lineWidth=1;
+    c.strokeRect(472,430,210,138);c.restore();
+    label(c,'沖縄本島周辺 / 位置を移動',477,417,C.muted);
     c.save();
-    japan.forEach(feature=>{
-      if((this.mode===0||this.mode===3)&&[36,37,38,39].includes(feature.id))return;
-      if(this.mode===1&&feature.id===25)return;
-      if(this.mode===2&&feature.sado)return;
+    mapFeatures.forEach(feature=>{
+      if(this.target===0&&[36,37,38,39].includes(feature.id))return;
+      if(this.target===1&&feature.id===25)return;
+      if(this.target===2&&feature.sado)return;
+      if(this.target===3&&feature.id===47)return;
       c.beginPath();
       feature.rings.forEach(r=>{r.forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));c.closePath();});
       c.fillStyle='#a4ad88'; c.fill('evenodd'); c.strokeStyle='#6c7b68'; c.lineWidth=.8; c.stroke();
     });
-    if(this.mode===3){
-      c.save(); c.translate(208,440); c.scale(.65,.65); c.beginPath();
-      [[-50,-12],[-30,-25],[-10,-20],[2,-39],[10,-16],[30,-30],[43,-10],[47,9],[36,19],[12,27],[-8,14],[-35,22],[-50,12]].forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));
-      c.closePath(); c.fillStyle='#a4ad88';c.fill();c.strokeStyle='#6c7b68';c.stroke();c.restore();
-    }
     line(c,[[628,87],[628,132]],C.paper);text(c,'N',628,69,15,C.paper);text(c,'▲',628,86,13,C.paper);
-    label(c,'南西諸島は省略',30,551); c.restore();
+    label(c,'一部島嶼は省略',30,551); c.restore();
   }
 }
 

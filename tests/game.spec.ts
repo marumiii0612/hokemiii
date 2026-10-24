@@ -36,7 +36,7 @@ for(const scenario of [
   {name:'missing Shikoku',sample:0,x:213,y:442},
   {name:'missing Shiga',sample:.3,x:300,y:394},
   {name:'missing Sado',sample:.6,x:379,y:303},
-  {name:'Australia replacing Shikoku',sample:.999999,x:208,y:440},
+  {name:'missing Okinawa',sample:.999999,x:590,y:505},
 ]){
   test(`Japan anomaly accepts an immediate tap: ${scenario.name}`,async({page})=>{
     await page.goto('/');
@@ -55,6 +55,12 @@ for(const scenario of [
     await expect(page.locator('#mission-title')).toHaveText('見つけろ。');
     await expect(page.locator('#transition')).toBeHidden();
     await expect(page.locator('#controls button')).toHaveCount(0);
+    const okinawaPixel=await page.locator('#game-canvas').evaluate((canvas:HTMLCanvasElement)=>{
+      const scale=canvas.width/720;
+      return Array.from(canvas.getContext('2d')!.getImageData(Math.round(583*scale),Math.round(535*scale),1,1).data).slice(0,3);
+    });
+    if(scenario.name==='missing Okinawa')expect(okinawaPixel).not.toEqual([164,173,136]);
+    else expect(okinawaPixel).toEqual([164,173,136]);
     await tapCanvas(page,scenario.x,scenario.y);
     await expect(page.locator('#transition-title')).toHaveText('任務完了');
   });
@@ -175,10 +181,10 @@ test('complete eight real missions, then accelerate the second loop',async({page
   for(let i=0;i<10;i++)await page.keyboard.press('Space');
   await page.clock.runFor(2400);
   await expect(page.locator('#mission-title')).toHaveText('刺せ。');
-  // The banana crosses the knife's flight path after about 2.38 s.
-  // Subtract elapsed time already spent in this round and release ~0.36 s early.
+  // The faster banana crosses the knife's flight path after about 1.69 s.
+  // Subtract elapsed time already spent in this round and release ~0.34 s early.
   const remaining=Number((await page.locator('#time-value').textContent())!.replace('s',''));
-  await page.clock.runFor(Math.max(0,(remaining-4.0)*1000));
+  await page.clock.runFor(Math.max(0,(remaining-4.65)*1000));
   await page.keyboard.press('Space');await page.clock.runFor(600);
   await expect(page.locator('#transition-title')).toHaveText('任務完了');
   await page.clock.runFor(2000);
@@ -201,7 +207,13 @@ test('each mission has functional success, failure and escalating speed',async({
         const game=createRound(id,{finish:(ok:boolean,message:string)=>verdict.push({ok,message}),sound:()=>{}},stage);
         return{game,verdict};
       };
-      const knife=run('knife');for(let i=0;i<200;i++)knife.game.tick(.01);knife.game.action('primary');for(let i=0;i<60;i++)knife.game.tick(.01);results.knife=knife.verdict[0]?.ok;
+      results.knife=[{stage:1,tap:1.35},{stage:9,tap:1.08},{stage:17,tap:.87},{stage:25,tap:.73},{stage:57,tap:.37}].map(({stage,tap})=>{
+        const knife=run('knife',stage);
+        for(let i=0;i<Math.round(tap*100);i++)knife.game.tick(.01);
+        knife.game.action('primary');for(let i=0;i<60;i++)knife.game.tick(.01);
+        return knife.verdict[0]?.ok;
+      });
+      const lateKnife=run('knife');for(let i=0;i<200;i++)lateKnife.game.tick(.01);lateKnife.game.action('primary');for(let i=0;i<80;i++)lateKnife.game.tick(.01);results.lateKnifeRejected=lateKnife.verdict[0]?.ok===false;
       const aim=run('aim');aim.game.pointer(275,262);results.aim=aim.verdict[0]?.ok;
       const heart=run('aim');heart.game.pointer(340,262);results.heartRejected=heart.verdict[0]?.ok===false;
       const laser=run('laser');for(let i=0;i<200;i++)laser.game.tick(.01);results.laserCollision=laser.verdict[0]?.ok===false;
@@ -223,7 +235,7 @@ test('each mission has functional success, failure and escalating speed',async({
       for(let mode=0;mode<4;mode++){
         let first=true;Math.random=()=>{if(first){first=false;return(mode+.01)/4;}return 0;};
         const map=run('map');
-        const point=[[213,442],[300,394],[379,303],[208,440]][mode];
+        const point=[[213,442],[300,394],[379,303],[590,505]][mode];
         if(map.game.controls().length)throw new Error('Maps must not display answer choices');
         map.game.action(`choice-${mode<3?mode:0}`);
         if(map.verdict.length)throw new Error('Maps must require a direct tap');
@@ -233,5 +245,5 @@ test('each mission has functional success, failure and escalating speed',async({
     }finally{Math.random=original;}
     return results;
   });
-  expect(result).toEqual({knife:true,aim:true,heartRejected:true,laserCollision:true,chaseCollision:true,lateChaseDodge:true,eatNeedsTen:true,eat:true,noEatCounter:true,overknock:true,noKnockCounter:true,knockAllowsNine:true,knockRejectsTen:true,memoryHidden:true,memory:true,speeds:[5.5,4.583,3.929,3.438],maps:[true,true,true,true]});
+  expect(result).toEqual({knife:[true,true,true,true,true],lateKnifeRejected:true,aim:true,heartRejected:true,laserCollision:true,chaseCollision:true,lateChaseDodge:true,eatNeedsTen:true,eat:true,noEatCounter:true,overknock:true,noKnockCounter:true,knockAllowsNine:true,knockRejectsTen:true,memoryHidden:true,memory:true,speeds:[5.5,4.583,3.929,3.438],maps:[true,true,true,true]});
 });
