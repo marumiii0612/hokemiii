@@ -138,7 +138,7 @@ body[data-screen="play"] .brand-en { font-size: 6px; }
 body[data-screen="play"] .site-footer { display: none; }
 body[data-screen="play"] .play-screen {
   display: grid;
-  grid-template-rows: 28px 52px 3px minmax(0, 1fr) 36px 98px 14px;
+  grid-template-rows: 28px 52px 3px minmax(0, 1fr) 98px 14px;
   gap: 6px;
   width: 100%;
   max-width: 680px;
@@ -166,14 +166,24 @@ body[data-screen="play"] .timer-track { margin: 0; }
   flex-shrink: 0;
   width: min(96cqw, calc((96cqh - 2px) * 1.125 + 2px));
 }
-body[data-screen="play"] .game-hint { margin: 0; min-height: 0; overflow: hidden; font-size: 10px; line-height: 1.5; }
+body[data-screen="play"] .game-hint {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
 .controls-slot { display: flex; align-items: flex-end; min-height: 0; }
 body[data-screen="play"] .controls { width: 100%; min-height: 0; gap: 8px; }
 body[data-screen="play"] .control-button { height: 44px; min-height: 44px; font-size: 12px; }
 body[data-screen="play"] .game-bottom { margin: 0; font-size: 7px; }
 @media (max-height: 780px) {
   body[data-screen="play"] .site-header { height: 40px; }
-  body[data-screen="play"] .play-screen { grid-template-rows: 24px 38px 3px minmax(0, 1fr) 30px 48px; gap: 4px; padding: 4px 0; }
+  body[data-screen="play"] .play-screen { grid-template-rows: 24px 38px 3px minmax(0, 1fr) 48px; gap: 4px; padding: 4px 0; }
   body[data-screen="play"] .game-status .icon-button { width: 24px; height: 24px; }
   body[data-screen="play"] .mission-heading h2 { font-size: 23px; margin-top: 0; }
   body[data-screen="play"] .mission-heading .eyebrow { font-size: 6px; letter-spacing: .06em; }
@@ -188,7 +198,7 @@ body[data-screen="play"] .game-bottom { margin: 0; font-size: 7px; }
   body[data-screen="play"] .site-frame { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: 40px minmax(0, 1fr); column-gap: 12px; }
   body[data-screen="play"] .site-header { grid-column: 1 / -1; }
   body[data-screen="play"] .classified { display: none; }
-  body[data-screen="play"] .play-screen { grid-column: 1; grid-row: 2; max-width: none; grid-template-columns: minmax(0, 1fr) minmax(160px, .65fr); grid-template-rows: 28px 40px 3px minmax(0, 1fr) 96px; gap: 4px 12px; }
+  body[data-screen="play"] .play-screen { grid-column: 1; grid-row: 2; max-width: none; grid-template-columns: minmax(0, 1fr) minmax(160px, .65fr); grid-template-rows: 28px 40px 3px minmax(96px, 1fr); gap: 4px 12px; }
   body[data-screen="play"] .game-viewport { grid-column: 1; grid-row: 1 / -1; }
   body[data-screen="play"] .game-status { grid-column: 2; grid-row: 1; gap: 6px; }
   body[data-screen="play"] .stage-count .eyebrow { display: none; }
@@ -196,8 +206,7 @@ body[data-screen="play"] .game-bottom { margin: 0; font-size: 7px; }
   body[data-screen="play"] .live-status > span { font-size: 6px; }
   body[data-screen="play"] .mission-heading { grid-column: 2; grid-row: 2; }
   body[data-screen="play"] .timer-track { grid-column: 2; grid-row: 3; }
-  body[data-screen="play"] .game-hint { grid-column: 2; grid-row: 4; }
-  body[data-screen="play"] .controls-slot { grid-column: 2; grid-row: 5; }
+  body[data-screen="play"] .controls-slot { grid-column: 2; grid-row: 4; }
   body[data-screen="play"] .controls.four { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
