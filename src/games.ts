@@ -208,9 +208,14 @@ class Laser extends Round {
   private lanes=[150,290,430,570];
   private lane=1; private px=290; private wave=-1; private danger:number[]=[];
   private groundLaser=false;
-  private period=1.65; private phase=0;
+  private period=1.65; private cycleDuration=1.65; private phase=0;
   private jumping=false; private jumpTime=0; private jumpHeight=0;
-  constructor(api:Api,stage:number){super(api,stage);this.duration=7/this.speed;this.period=1.65/this.speed;}
+  constructor(api:Api,stage:number){
+    super(api,stage);
+    const recovery=stage>=9&&stage<=16 ? .45 : 0;
+    this.cycleDuration=1.65/this.speed;this.period=this.cycleDuration+recovery;
+    this.duration=7/this.speed+3*recovery;
+  }
   controls(){return[{label:'左へ',action:'left',key:'←'},{label:'ジャンプ',action:'jump',key:'↑ / SPACE'},{label:'右へ',action:'right',key:'→'}];}
   action(s:string){
     if(this.ended)return;
@@ -230,7 +235,7 @@ class Laser extends Round {
       if(progress>=1){this.jumping=false;this.jumpHeight=0;}
     }
     const t=this.elapsed-.6/this.speed;if(t<0)return;
-    const w=Math.floor(t/this.period); this.phase=(t%this.period)/this.period;
+    const w=Math.floor(t/this.period); this.phase=(t%this.period)/this.cycleDuration;
     if(w!==this.wave){
       this.wave=w;this.groundLaser=w%2===1;
       const combined=this.groundLaser&&this.stage>=9&&(w%4===3||this.stage>=17);
@@ -238,6 +243,7 @@ class Laser extends Round {
       this.hint=combined?'縦線をよけながらジャンプ。左右移動＋中央タップ / ↑・Space':this.groundLaser?'下の横レーザーはジャンプ。中央タップ / ↑・Space':'縦レーザーは左右によける。左右タップ / ← →';
       this.api.sound('warning');
     }
+    if(this.phase>=1){this.hint='次の予告を待て。';return;}
     if(this.firing){
       const verticalHit=this.danger.some(lane=>this.lanes[lane]>=Math.min(previousX,this.px)-28&&this.lanes[lane]<=Math.max(previousX,this.px)+28);
       if((this.groundLaser&&this.jumpHeight<36)||verticalHit)this.end(false,'レーザーに触れた。');
@@ -251,7 +257,7 @@ class Laser extends Round {
     for(let x=-500;x<1300;x+=200)line(c,[[vx,vy],[x,H]],'#28373c');
     rect(c,64,62,592,109,'#1c2a2e');line(c,[[64,171],[656,171]],'#587275',2);
     this.lanes.forEach((x,i)=>{
-      rect(c,x-45,77,90,68,'#0e171a',4);circle(c,x,112,8,this.danger.includes(i)?C.red:'#54766f');
+      rect(c,x-45,77,90,68,'#0e171a',4);circle(c,x,112,8,this.phase<1&&this.danger.includes(i)?C.red:'#54766f');
       text(c,`0${i+1}`,x,197,15,C.muted);
       if(this.danger.includes(i)){
         const on=this.firing;

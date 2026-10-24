@@ -67,13 +67,14 @@ test('low lasers require jumps, vertical lasers remain dangerous in the air, and
     try{
       const speeds=[1,9,57].map(stage=>{
         const speed=Math.min(2.4,1+Math.floor((stage-1)/8)*.2);
+        const recovery=stage===9?.45:0;
         const survive=run(stage);survive.game.action('left');
-        advance(survive.game,2.35/speed);survive.game.action('jump');
+        advance(survive.game,2.35/speed+recovery);survive.game.action('jump');
         advance(survive.game,.55/speed);survive.game.action('jump'); // A tap in midair must not restart the jump.
-        advance(survive.game,2.75/speed);survive.game.action('up');
+        advance(survive.game,2.75/speed+2*recovery);survive.game.action('up');
         advance(survive.game,1.5/speed);
-        const left=run(stage);left.game.action('left');advance(left.game,3.35/speed);
-        const right=run(stage);right.game.action('right');right.game.action('right');advance(right.game,3.35/speed);
+        const left=run(stage);left.game.action('left');advance(left.game,3.35/speed+recovery);
+        const right=run(stage);right.game.action('right');right.game.action('right');advance(right.game,3.35/speed+recovery);
         const vertical=run(stage);advance(vertical.game,.8/speed);vertical.game.action('primary');advance(vertical.game,1/speed);
         return {survived:survive.verdict[0],lowHitsLeft:left.verdict[0]===false,lowHitsRight:right.verdict[0]===false,verticalHitsInAir:vertical.verdict[0]===false};
       });
@@ -106,11 +107,12 @@ test('combined beams unlock gradually and require both moving and jumping at the
       Math.random=()=>0;
       const verdict:boolean[]=[];
       const speed=Math.min(2.4,1+Math.floor((stage-1)/8)*.2);
+      const recovery=stage===9?.45:0;
       const game=createRound('laser',{finish:(ok:boolean)=>verdict.push(ok),sound:()=>{}},stage);
       game.action('left');
-      advance(game,2.35/speed);game.action('jump');
+      advance(game,2.35/speed+recovery);game.action('jump');
       advance(game,.85/speed);const early=beams(game,290);
-      advance(game,2.3/speed);
+      advance(game,2.3/speed+2*recovery);
       // Put the last vertical beams in the player's current column, requiring a move.
       Math.random=()=>.999;
       advance(game,.2/speed);
@@ -138,4 +140,32 @@ test('combined beams unlock gradually and require both moving and jumping at the
     ],
     jumpOnly:[false,false,false],moveOnly:[false,false,false],firstLoopJumpOnly:true,
   });
+});
+
+test('the second loop adds quiet gaps and keeps four short laser bursts',async({page})=>{
+  await page.goto('/');
+  const result=await page.evaluate(async()=>{
+    const modulePath='/src/games.ts';
+    const {createRound}=await import(/* @vite-ignore */ modulePath);
+    const original=Math.random;Math.random=()=>0;
+    const warnings:number[]=[];const verdict:boolean[]=[];
+    const canvas=document.createElement('canvas');canvas.width=720;canvas.height=640;
+    const c=canvas.getContext('2d')!;
+    const game=createRound('laser',{finish:(ok:boolean)=>verdict.push(ok),sound:(kind:string)=>{if(kind==='warning')warnings.push(game.elapsed);}},9);
+    const advanceTo=(time:number)=>{
+      for(let left=time-game.elapsed;left>1e-8;left-=.005)game.tick(Math.min(.005,left));
+    };
+    try{
+      game.action('left');advanceTo(2.05);game.draw(c);
+      const quiet=game.hint==='次の予告を待て。'&&[150,290,430,570].every(x=>c.getImageData(x,112,1,1).data[0]<120);
+      advanceTo(2.35/1.2+.45);game.action('jump');
+      advanceTo(2.7);game.draw(c);const oldFiringTimeIsSafe=c.getImageData(360,526,1,1).data[0]<100;
+      advanceTo(3.05);game.draw(c);const delayedBeamFires=c.getImageData(360,526,1,1).data[0]>180;
+      advanceTo(5.65/1.2+1.35);game.action('up');advanceTo(game.duration+.02);
+      return {quiet,oldFiringTimeIsSafe,delayedBeamFires,intervals:warnings.slice(1).map((time:number,i:number)=>time-warnings[i]),bursts:warnings.length,ok:verdict[0]};
+    }finally{Math.random=original;}
+  });
+  expect(result.quiet).toBe(true);expect(result.oldFiringTimeIsSafe).toBe(true);expect(result.delayedBeamFires).toBe(true);
+  expect(result.bursts).toBe(4);expect(result.ok).toBe(true);
+  for(const interval of result.intervals)expect(interval).toBeCloseTo(1.825,2);
 });
