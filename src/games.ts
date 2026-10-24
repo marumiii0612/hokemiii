@@ -1,6 +1,6 @@
 import japan from './data/japan.json';
 import okinawa from './data/okinawa.json';
-import { C, W, H, rect, text, line, circle, grid, label, cross, person, vignette, rand, pick, shuffle } from './draw';
+import { C, W, H, rect, text, line, circle, grid, cross, person, vignette, rand, pick, shuffle } from './draw';
 
 export type GameId = 'knife' | 'map' | 'knock' | 'laser' | 'aim' | 'memory' | 'chase' | 'eat';
 export type Control = { label: string; action: string; key?: string };
@@ -59,7 +59,6 @@ class Knife extends Round {
     rect(c,0,0,W,H,'#202a25'); grid(c,60,'#2b3730');
     rect(c,42,56,636,530,'#17211c',2);
     line(c,[[70,293],[650,293]],'#354437');
-    label(c,'01 / TRAJECTORY',72,88); label(c,'KNIFE × 01',72,551,C.gold);
     c.setLineDash([4,8]); line(c,[[360,290],[360,511]],'#677058'); c.setLineDash([]);
     cross(c,360,220,35,'#546044');
     c.save(); c.translate(this.bx,this.by); c.rotate(-.35+this.elapsed*.5);
@@ -73,7 +72,7 @@ class Knife extends Round {
     c.beginPath(); c.moveTo(0,-48); c.lineTo(10,12); c.lineTo(-7,12); c.closePath(); c.fillStyle='#dedfd2'; c.fill();
     line(c,[[0,-35],[0,8]],'#87998e',2); rect(c,-13,10,26,5,C.gold,1); rect(c,-6,15,12,31,'#644e34',3);
     c.restore();
-    label(c,'TAP TO THROW',505,551); vignette(c);
+    vignette(c);
   }
 }
 
@@ -111,8 +110,6 @@ class Find extends Round {
   }
   draw(c:CanvasRenderingContext2D){
     rect(c,0,0,W,H,'#17292d'); grid(c,48,'#1f3539');
-    label(c,'GEOGRAPHIC INTELLIGENCE / JP',28,30,C.blue);
-    text(c,'日本列島に、ひとつの異変。',360,600,20,C.paper);
     c.save();
     c.translate(mapLayout.x,mapLayout.y);c.scale(mapLayout.scale,mapLayout.scale);
     mapFeatures.forEach(feature=>{
@@ -126,7 +123,6 @@ class Find extends Round {
     });
     c.restore();
     line(c,[[628,87],[628,132]],C.paper);text(c,'N',628,69,15,C.paper);text(c,'▲',628,86,13,C.paper);
-    label(c,'一部島嶼は省略',30,574);
   }
 }
 
@@ -167,11 +163,8 @@ class Knock extends Round {
     this.drawDoor(c);
     if(!this.knocking){
       rect(c,0,0,W,H,'#111915ae');
-      label(c,'AUTHENTICATION / EYES ONLY',40,35,C.gold);
       this.drawPaper(c,Math.max(0,this.elapsed*this.speed-3));
-      text(c,this.elapsed<3/this.speed?'コードを記憶せよ':'紙は残らない。記憶で伝えろ。',360,552,24,C.gold,'center',600);
     }else{
-      label(c,'CONTACT / MEMORY ONLY',40,35,C.gold);
       for(let i=0;i<5;i++){
         const active=i===this.turn;
         rect(c,177+i*77,80,60,46,active?(this.turn%2?'#4e6d75':'#c7b180'):'#26302b',3);
@@ -181,7 +174,7 @@ class Knock extends Round {
     if(this.knocking&&this.turn<5){
       this.ripples.forEach(r=>{circle(c,347,451,18+r*100,`rgba(221,198,143,${.7-r})`,true,2);});
       rect(c,223,543,274,54,'#17201be8',3);
-      text(c,this.turn%2?'相手の応答を待て':'あなたの番',360,569,23,this.turn%2?C.blue:C.gold,'center',600);
+      text(c,this.turn%2?'相手の番':'あなたの番',360,569,23,this.turn%2?C.blue:C.gold,'center',600);
     }
     vignette(c);
   }
@@ -198,8 +191,6 @@ class Knock extends Round {
     line(c,[[30,96],[450,96]],'#9f8c63',1);
     text(c,'認証コード（5桁）',240,62,27,'#352f24','center',600);
     this.code.forEach((digit,i)=>text(c,String(digit),96+i*72,151,54,'#29291f','center',600));
-    text(c,'自分 → 相手 → 自分 → 相手 → 自分',240,216,16,'#62583f');
-    label(c,'EYES ONLY / 記憶後、破棄',30,253,'#81734f');
     c.beginPath();c.moveTo(449,0);c.lineTo(480,31);c.lineTo(449,31);c.closePath();c.fillStyle='#c1b492';c.fill();
     const pixels=c.getImageData(0,0,480,280).data;
     // Fixed grain patterns keep the animation stable without consuming game randomness.
@@ -353,12 +344,11 @@ class Laser extends Round {
       if(!on)c.setLineDash([13,10]);
       c.shadowColor=C.red;c.shadowBlur=on?26:0;
       line(c,[[88,526],[632,526]],on?'#ffcead':C.red,on?9:3);c.restore();
-      if(!on)text(c,this.danger.length?'← → ＋ ジャンプ':'↑ ジャンプ',360,296,28,C.gold,'center',600);
     }
     c.beginPath();c.ellipse(this.px,557,32-this.jumpHeight*.1,9-this.jumpHeight*.025,0,0,Math.PI*2);c.fillStyle='#00000070';c.fill();
     person(c,this.px,521-this.jumpHeight,1.25,'#080c11','#161d22',this.jumping?-5:Math.sin(this.elapsed*9)*4);
     line(c,[[this.px-8,412-this.jumpHeight],[this.px+8,412-this.jumpHeight]],'#7b8888',3);
-    label(c,'SECURITY GRID / A-04',35,30,C.blue); label(c,'SURVIVE',35,604,C.gold);vignette(c);
+    vignette(c);
   }
 }
 
@@ -405,7 +395,6 @@ class Aim extends Round {
   }
   draw(c:CanvasRenderingContext2D){
     rect(c,0,0,W,H,'#172724');grid(c,40,'#223732');
-    label(c,'PRECISION / NON-LETHAL',35,32,C.green);
     c.save();c.setLineDash([5,8]);line(c,[[360,70],[360,549]],'#a4b19a66',1.5);c.restore();
     c.save();c.translate(360+this.offsetX,338+this.offsetY);
     c.beginPath();c.moveTo(-55,-170);c.lineTo(-140,-123);c.lineTo(-168,81);c.lineTo(-117,88);c.lineTo(-93,-24);c.lineTo(-84,198);c.lineTo(83,198);c.lineTo(93,-24);c.lineTo(117,88);c.lineTo(168,81);c.lineTo(140,-123);c.lineTo(55,-170);c.closePath();
@@ -421,15 +410,13 @@ class Aim extends Round {
     c.beginPath();c.moveTo(0,19);c.bezierCurveTo(-39,-4,-23,-32,0,-15);c.bezierCurveTo(23,-32,39,-4,0,19);c.fillStyle=C.red;c.fill();c.restore();
     const tx=this.hx+this.side*65;
     cross(c,tx,this.hy,21,C.paper);
-    line(c,[[tx+this.side*30,this.hy],[tx+this.side*100,this.hy]],C.paper);
-    text(c,'ここを通せ',tx+this.side*98,this.hy-21,15,C.paper);
     rect(c,343,585,34,30,'#101a19',4);rect(c,350,567,20,30,'#56665e',3);
     rect(c,354,559,12,29,'#c5ccb6',2);line(c,[[360,566],[360,585]],'#6e7a69',2);
     if(this.shot){
       line(c,[[360,this.bulletY+27],[360,this.bulletY+9]],'#d4b98066',2);
       rect(c,357,this.bulletY-9,6,18,C.gold,3);
     }
-    text(c,'心臓は、撃つな。',35,604,18,C.red,'left',600);label(c,'TAP TO FIRE',563,604,C.gold);vignette(c);
+    vignette(c);
   }
 }
 
@@ -457,13 +444,13 @@ class Memory extends Round {
   draw(c:CanvasRenderingContext2D){
     const viewing=this.elapsed<this.viewTime;
     this.hint=viewing?`写真を${this.viewTime.toFixed(1)}秒で覚える。服、床、時計、人の数に注目。`:'正しい答えをひとつ選ぶ';
-    rect(c,0,0,W,H,'#1c231e');label(c,'ARCHIVE / CABINET PORTRAIT',30,30,C.gold);
+    rect(c,0,0,W,H,'#1c231e');
     if(!viewing){
       grid(c,48,'#253229');
       const questions=['階段・床の色は？','整備士の服の色は？','時計が示していた時刻は？','写真に写っていたのは何人？'];
-      text(c,'RECALL THE DETAILS',360,180,14,C.gold);text(c,'?',360,292,116,'#485a47');
+      text(c,'?',360,292,116,'#485a47');
       text(c,questions[this.question],360,423,30,C.paper,'center',600);
-      text(c,'たった3秒。何が見えていた？',360,483,17,C.muted);return;
+      return;
     }
     rect(c,38,69,644,511,'#c6c0a9',3);rect(c,50,81,620,487,'#9eaa99');
     for(let i=0;i<7;i++)rect(c,50+i*96,81,42,260,'#bfc3ad');
@@ -513,7 +500,6 @@ class Memory extends Round {
     c.closePath();c.fillStyle='#e2e9e2';c.fill();
     circle(c,0,13,5,'#e2e9e2');circle(c,0,13,2,'#4b6259');c.restore();
     c.restore();
-    rect(c,53,535,614,31,'#101a13b0');text(c,'記録写真  /  人物・衣服・床・時刻を記憶せよ',360,551,14,C.paper);
     text(c,`残り ${Math.max(1,Math.ceil(this.viewTime-this.elapsed))} 秒`,360,611,18,C.gold);vignette(c);
   }
 }
@@ -560,8 +546,7 @@ class Chase extends Round {
       circle(c,x,y+5,10+z*24,'#00000045');person(c,x,y,.25+z*1.15,w.color,'#b8a18d',Math.sin(this.elapsed*12)*4);
     });
     circle(c,this.px,602,35,'#00000075');person(c,this.px,566,1.05,'#141c24','#5b625d',Math.sin(this.elapsed*17)*9);
-    label(c,'PURSUIT / DOWNTOWN',28,29,C.paper);
-    rect(c,268,75,184,34,'#152020bb',3);text(c,'追跡を振り切れ',360,93,15,C.gold);vignette(c);
+    vignette(c);
   }
 }
 
@@ -582,7 +567,6 @@ class Eat extends Round {
   draw(c:CanvasRenderingContext2D){
     rect(c,0,0,W,H,'#292d23');
     for(let i=0;i<6;i++){rect(c,35+i*115,40,105,369,'#4b4d37');for(let j=0;j<4;j++)rect(c,40+i*115,45+j*90,95,80,'#9b987130');}
-    label(c,'REFUEL / TEN SERVINGS',30,28,C.gold);
     rect(c,555,79,76,190,'#d7c89c',2);text(c,'炒',593,126,38,'#414735','center',600);text(c,'飯',593,179,38,'#414735','center',600);text(c,'十人前',593,235,15,'#414735');
     const bounce=this.bite>0?Math.sin(this.bite/.2*Math.PI)*8:0;
     c.save();c.translate(0,bounce);
@@ -605,7 +589,6 @@ class Eat extends Round {
       c.beginPath();c.ellipse(360,516,83-(this.portions*5),Math.max(6,34-this.portions*3),0,Math.PI,0);c.fillStyle='#cead62';c.fill();
       for(let i=0;i<28;i++){const x=360+Math.sin(i*2.4)*(68-this.portions*4),y=510-Math.abs(Math.cos(i*1.7))*(24-this.portions*2);rect(c,x,y,5,3,i%4===0?'#798550':i%5===0?'#ba7050':'#e6c579',1);}
     }
-    text(c,'TAP TO EAT',360,589,14,C.gold);
     this.grains.forEach(g=>rect(c,g.x,g.y,5,3,'#e6c579',1));vignette(c);
   }
 }
