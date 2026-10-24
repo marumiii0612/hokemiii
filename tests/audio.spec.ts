@@ -3,18 +3,22 @@ import {tapCanvas} from './helpers';
 
 // Test the integration without relying on YouTube's network or autoplay availability.
 const fakeApi=`
-window.musicMock={plays:0,pauses:0,volumes:[],blockNext:!!window.blockTitleMusic};
+window.musicMock={plays:0,pauses:0,volume:80,volumeReads:0,volumes:[],blockNext:!!window.blockTitleMusic};
 window.YT={Player:class{
   constructor(element,options){
     this.options=options;window.musicMock.options=options;
     this.frame=document.createElement('iframe');this.frame.srcdoc='<p>YouTube player test double</p>';
     element.replaceWith(this.frame);setTimeout(()=>options.events.onReady({target:this}),0);
   }
-  setVolume(volume){window.musicMock.volumes.push(volume);}
+  getVolume(){window.musicMock.volumeReads++;return window.musicMock.volume;}
+  setVolume(volume){window.musicMock.volume=volume;window.musicMock.volumes.push(volume);}
   playVideo(){
     window.musicMock.plays++;
     if(window.musicMock.blockNext){window.musicMock.blockNext=false;this.options.events.onAutoplayBlocked();}
-    else this.options.events.onStateChange({target:this,data:1});
+    else{
+      if(window.resetMusicVolumeOnPlay)window.musicMock.volume=100;
+      this.options.events.onStateChange({target:this,data:1});
+    }
   }
   pauseVideo(){window.musicMock.pauses++;}
   destroy(){this.frame.remove();}
@@ -31,7 +35,7 @@ async function mockMusic(page:Page){
 async function musicState(page:Page){
   return page.evaluate(()=>{
     const mock=(window as any).musicMock;
-    return {plays:mock.plays,pauses:mock.pauses,volumes:mock.volumes,videoId:mock.options.videoId,vars:mock.options.playerVars};
+    return {plays:mock.plays,pauses:mock.pauses,volume:mock.volume,volumeReads:mock.volumeReads,volumes:mock.volumes,videoId:mock.options.videoId,vars:mock.options.playerVars};
   });
 }
 
@@ -129,6 +133,46 @@ test.describe('BGM through a mission and louder effects',()=>{
     await page.getByRole('button',{name:'BGMを再生',exact:true}).tap();
     await expect(page.locator('#bgm-status')).toContainText('再生中');
     expect((await musicState(page)).plays).toBe(2);
+  });
+
+  test('keeps BGM at the same volume across player resets, game start and restart',async({page})=>{
+    const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
+    await page.addInitScript(()=>{Object.assign(window,{resetMusicVolumeOnPlay:true});});
+    await mockMusic(page);
+    const time=new Date('2026-10-24T12:00:00Z');
+    await page.clock.install({time});await page.clock.pauseAt(new Date(time.getTime()+1000));
+    await page.getByRole('button',{name:'BGMを再生',exact:true}).tap();
+    await expect.poll(()=>page.evaluate(()=>!!(window as any).musicMock?.options)).toBe(true);
+    await page.clock.runFor(50);
+    await expect(page.locator('#bgm-status')).toContainText('再生中');
+    expect((await musicState(page)).volume).toBe(8);
+    await page.evaluate(()=>{(window as any).musicMock.volume=42;});
+    await page.clock.runFor(600);
+    const corrected=await musicState(page);expect(corrected.volume).toBe(8);
+    await page.clock.runFor(2000);
+    const steady=await musicState(page);
+    expect(steady.volumes).toEqual(corrected.volumes);
+    expect(steady.volumeReads).toBeGreaterThan(corrected.volumeReads);
+    await page.getByRole('button',{name:'はじめる',exact:true}).click();await page.clock.runFor(1300);
+    expect((await musicState(page)).plays).toBe(steady.plays);
+    await page.evaluate(()=>{(window as any).musicMock.volume=0;});
+    await page.clock.runFor(600);
+    expect((await musicState(page)).volume).toBe(8);
+    await tapCanvas(page,512,135);
+    await expect(page.locator('#result-screen')).toBeVisible();
+    const failed=await musicState(page);
+    await page.evaluate(()=>{(window as any).musicMock.volume=60;});await page.clock.runFor(2000);
+    const stopped=await musicState(page);
+    expect(stopped.volume).toBe(60);expect(stopped.volumeReads).toBe(failed.volumeReads);
+    expect(stopped.volumes).toEqual(failed.volumes);
+    await page.getByRole('button',{name:'もう一度、潜入する',exact:true}).click();
+    const restarted=await musicState(page);
+    expect(restarted.volume).toBe(8);expect(restarted.plays).toBe(stopped.plays+1);
+    expect(restarted.volumes.every((volume:number)=>volume===8)).toBe(true);
+    await page.evaluate(()=>{(window as any).musicMock.options.events.onError();});
+    const unavailable=await musicState(page);await page.clock.runFor(1000);
+    expect((await musicState(page)).volumeReads).toBe(unavailable.volumeReads);
+    expect(errors).toEqual([]);
   });
 
   test('a YouTube network failure leaves the game playable',async({page})=>{

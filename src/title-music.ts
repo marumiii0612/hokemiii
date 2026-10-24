@@ -1,4 +1,4 @@
-type Player={setVolume:(volume:number)=>void;playVideo:()=>void;pauseVideo:()=>void;destroy:()=>void;getIframe:()=>HTMLIFrameElement};
+type Player={getVolume:()=>number;setVolume:(volume:number)=>void;playVideo:()=>void;pauseVideo:()=>void;destroy:()=>void;getIframe:()=>HTMLIFrameElement};
 type PlayerEvent={target:Player;data?:number};
 type PlayerOptions={
   videoId:string;width:string;height:number;host:string;playerVars:Record<string,string|number>;
@@ -22,6 +22,9 @@ export class TitleMusic {
   private active=true;
   private enabled=true;
   private blocked=false;
+  private playing=false;
+  private starting=false;
+  private volumeTimer?:number;
   private timer?:number;
   private script?:HTMLScriptElement;
   private generation=0;
@@ -46,12 +49,25 @@ export class TitleMusic {
   private sync(){
     this.render();
     if(!this.ready||!this.player)return;
-    this.player.setVolume(MUSIC_VOLUME);
-    if(this.requested&&this.active&&this.enabled)this.player.playVideo();
+    if(this.requested&&this.active&&this.enabled){
+      this.keepVolume();
+      if(!this.playing&&!this.starting){this.starting=true;this.player.playVideo();}
+    }
     else{
+      this.playing=false;this.starting=false;this.stopVolumeCheck();
       this.player.pauseVideo();
       this.status.textContent=this.requested?'BGMは一時停止中です。':'BGMを停止しました。';
     }
+  }
+  private keepVolume(){
+    if(this.player&&this.player.getVolume()!==MUSIC_VOLUME)this.player.setVolume(MUSIC_VOLUME);
+  }
+  private stopVolumeCheck(){window.clearInterval(this.volumeTimer);this.volumeTimer=undefined;}
+  private startVolumeCheck(){
+    if(this.volumeTimer!==undefined)return;
+    this.volumeTimer=window.setInterval(()=>{
+      if(this.playing&&this.requested&&this.active&&this.enabled)this.keepVolume();
+    },500);
   }
   private load(){
     const generation=++this.generation;
@@ -82,15 +98,20 @@ export class TitleMusic {
           },
           onStateChange:({data})=>{
             if(generation!==this.generation)return;
+            if(data===0||data===2){this.playing=false;this.starting=false;this.stopVolumeCheck();}
             if(data===2&&this.active&&this.enabled&&this.requested){
               this.blocked=true;this.status.textContent='BGMは一時停止中です。';this.render();return;
             }
             if(data!==1)return;
-            if(!this.active||!this.enabled||!this.requested){this.player?.pauseVideo();return;}
+            if(!this.active||!this.enabled||!this.requested){
+              this.playing=false;this.starting=false;this.stopVolumeCheck();this.player?.pauseVideo();return;
+            }
+            this.starting=false;this.playing=true;this.keepVolume();this.startVolumeCheck();
             this.blocked=false;this.status.textContent='BGMを小さく再生中';this.render();
           },
           onAutoplayBlocked:()=>{
             if(generation!==this.generation)return;
+            this.playing=false;this.starting=false;this.stopVolumeCheck();
             this.blocked=true;this.status.textContent='BGMの再生ボタンをもう一度タップしてください。';this.render();
           },
           onError:()=>{if(generation===this.generation)this.fail();},
@@ -100,6 +121,7 @@ export class TitleMusic {
   }
   private fail(){
     this.generation++;
+    this.playing=false;this.starting=false;this.stopVolumeCheck();
     window.clearTimeout(this.timer);this.loading=false;this.ready=false;this.requested=false;this.blocked=false;
     try{this.player?.destroy();}catch{/* The game remains usable if YouTube is unavailable. */}
     this.player=undefined;this.host.replaceChildren();

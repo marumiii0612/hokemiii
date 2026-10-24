@@ -18,7 +18,7 @@ export class Audio {
         compressor.attack.value=.003;compressor.release.value=.15;
         this.master.connect(compressor);compressor.connect(this.ctx.destination);
       }
-      void this.ctx.resume().catch(()=>{});
+      if(this.ctx.state!=='running'&&this.ctx.state!=='closed')void this.ctx.resume().catch(()=>{});
     } catch { /* Audio is optional. */ }
   }
   play(kind: Tone) {

@@ -57,6 +57,7 @@ for(const size of sizes){
             setTimeout(()=>options.events.onReady({target:this}),0);
           }
           setVolume(){}
+          getVolume(){return 8;}
           playVideo(){this.options.events.onStateChange({data:1});}
           pauseVideo(){}
           destroy(){this.frame.remove();}
