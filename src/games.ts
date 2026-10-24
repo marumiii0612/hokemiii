@@ -148,14 +148,15 @@ class Knock extends Round {
       this.hint=this.elapsed<3/this.speed?'紙の5桁の認証コードを覚えろ。消えたらノック。':'紙が消える。覚えたコードを、自分・相手の順で。';
       return;
     }
-    this.hint='記憶した回数だけノック。青い番は相手が返す。';
+    this.hint='記憶した回数だけノック。相手の番に叩くと失敗。';
     this.ripples=this.ripples.map(r=>r+dt).filter(r=>r<.7);
     if(this.delay>0){this.delay-=dt;if(this.delay<=0){this.turn++;this.taps=0;this.lastAuto=this.elapsed;if(this.turn===5)this.end(true,'認証コード、照合完了。');}return;}
     if(this.turn%2&&this.elapsed-this.lastAuto>.32/this.speed){this.lastAuto=this.elapsed;this.knock();}
   }
   private knock(){this.taps++;this.api.sound('tap');this.ripples.push(0);if(this.taps===this.code[this.turn])this.delay=.55/this.speed;}
   action(s:string){
-    if(s!=='primary'||!this.knocking||this.turn%2||this.ended)return;
+    if(s!=='primary'||!this.knocking||this.ended)return;
+    if(this.turn%2){this.end(false,'相手の応答中にノックした。');return;}
     if(this.delay>0){this.end(false,'ノックが多い。認証コード不一致。');return;}
     this.knock();
   }

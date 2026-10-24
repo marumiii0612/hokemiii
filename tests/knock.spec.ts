@@ -62,7 +62,6 @@ test.describe('memorize the paper authentication code',()=>{
       if(turn<2){
         await page.clock.runFor(650);
         await expect(page.locator('#controls button')).toContainText('応答を待て');
-        await tapCanvas(page,360,450); // Opponent turns ignore player taps.
         await page.clock.runFor(turn===0?1700:2400);
         await expect(page.locator('#controls button')).toContainText('ノック');
       }
@@ -72,6 +71,35 @@ test.describe('memorize the paper authentication code',()=>{
     await expect(page.locator('#game-hint')).toHaveText('認証成功。扉が開きます。');
     expect(errors).toEqual([]);
   });
+
+  for(const opponentTurn of [1,2]){
+    for(const input of ['canvas','button','keyboard']){
+      test(`knocking during opponent turn ${opponentTurn} via ${input} immediately fails`,async({page})=>{
+        await startKnock(page);await page.clock.runFor(4000);
+        for(let turn=0;turn<opponentTurn;turn++){
+          for(let i=0;i<[2,4][turn];i++)await page.locator('#controls button').click();
+          await page.clock.runFor(650);
+          await expect(page.locator('#controls button')).toContainText('応答を待て');
+          if(turn<opponentTurn-1){
+            await page.clock.runFor(1700);
+            await expect(page.locator('#controls button')).toContainText('ノック');
+          }
+        }
+        // Cover the start, active reply and the pause after the final automatic knock.
+        if(input==='canvas')await page.clock.runFor(500);
+        if(input==='keyboard')await page.clock.runFor(([3,5][opponentTurn-1]*.32+.1)*1000);
+        await expect(page.locator('#controls button')).toContainText('応答を待て');
+        if(input==='canvas')await tapCanvas(page,360,450);
+        else if(input==='button')await page.locator('#controls button').click();
+        else await page.keyboard.press('Space');
+        await expect(page.locator('#result-screen h1')).toHaveText('任務失敗。');
+        await expect(page.locator('#final-score')).toHaveText('0');
+        await expect(page.locator('#result-message')).toBeEmpty();
+        await expect(page.locator('#result-message')).toBeHidden();
+        await expect(page.getByRole('button',{name:'もう一度、潜入する',exact:true})).toBeVisible();
+      });
+    }
+  }
 
   test('extra knocks still fail without revealing the code and retry returns to a fresh paper',async({page})=>{
     await startKnock(page);await page.clock.runFor(4000);
