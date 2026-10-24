@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { tapCanvas, watchAimTarget, readAimTarget } from './helpers';
+import { tapCanvas } from './helpers';
 
 async function deterministic(page:Page){
   await page.addInitScript(()=>{Math.random=()=>0;});
@@ -171,7 +171,6 @@ for(const cleared of [40,41]){
 
 test('complete eight real missions, then accelerate the second loop',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
-  await watchAimTarget(page);
   await deterministic(page);await page.clock.install();
   await page.getByRole('button',{name:'はじめる',exact:true}).click();
   await page.clock.runFor(1300);
@@ -207,8 +206,10 @@ test('complete eight real missions, then accelerate the second loop',async({page
   await page.clock.runFor(1500);
   await page.clock.runFor(2400);
   await expect(page.locator('#mission-title')).toHaveText('狙え。');
-  const target=await readAimTarget(page);await tapCanvas(page,target.x,target.y);
-  await page.clock.runFor(5600);
+  const aimRemaining=Number((await page.locator('#time-value').textContent())!.replace('s',''));
+  await page.clock.runFor(Math.max(0,(aimRemaining-4.2)*1000));
+  await page.keyboard.press('Space');
+  await page.clock.runFor(6000);
   await expect(page.locator('#mission-title')).toHaveText('覚えろ。');
   await page.locator('#controls').getByRole('button',{name:'深い赤'}).click();
   await page.clock.runFor(2400);
@@ -251,8 +252,8 @@ test('each mission has functional success, failure and escalating speed',async({
         return knife.verdict[0]?.ok;
       });
       const lateKnife=run('knife');for(let i=0;i<200;i++)lateKnife.game.tick(.01);lateKnife.game.action('primary');for(let i=0;i<80;i++)lateKnife.game.tick(.01);results.lateKnifeRejected=lateKnife.verdict[0]?.ok===false;
-      const aim=run('aim');aim.game.pointer(275,262);results.aim=aim.verdict[0]?.ok;
-      const heart=run('aim');heart.game.pointer(340,262);results.heartRejected=heart.verdict[0]?.ok===false;
+      const aim=run('aim');for(let i=0;i<180;i++)aim.game.tick(.01);aim.game.action('primary');for(let i=0;i<80;i++)aim.game.tick(.01);results.aim=aim.verdict[0]?.ok;
+      const heart=run('aim');for(let i=0;i<140;i++)heart.game.tick(.01);heart.game.action('primary');for(let i=0;i<80;i++)heart.game.tick(.01);results.heartRejected=heart.verdict[0]?.ok===false&&heart.verdict[0].message.includes('心臓');
       const laser=run('laser');for(let i=0;i<200;i++)laser.game.tick(.01);results.laserCollision=laser.verdict[0]?.ok===false;
       const chase=run('chase');for(let i=0;i<800;i++)chase.game.tick(.01);results.chaseCollision=chase.verdict[0]?.ok===false;
       const lateDodge=run('chase');for(let i=0;i<240;i++)lateDodge.game.tick(.01);

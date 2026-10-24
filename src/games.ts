@@ -10,7 +10,7 @@ export const missions: { id: GameId; title: string; sub: string; icon: string }[
   {id:'map',title:'見つけろ',sub:'日本地図の間違いを見つけて、その場所をタップ。',icon:'⌖'},
   {id:'knock',title:'伝えろ',sub:'5桁の接触コードを、自分・相手・自分・相手・自分で伝えろ。',icon:'⠿'},
   {id:'laser',title:'よけろ',sub:'4列の縦レーザーを左右によけ、下の横レーザーはジャンプ。',icon:'╳'},
-  {id:'aim',title:'狙え',sub:'動く人物の、心臓のすぐ横を狙え。白い照準を撃て。',icon:'⊕'},
+  {id:'aim',title:'狙え',sub:'中央から真上に1発。動く白い照準を狙え。心臓は撃つな。',icon:'⊕'},
   {id:'memory',title:'覚えろ',sub:'短時間だけ表示される写真を記憶し、続く質問に答えろ。',icon:'◷'},
   {id:'chase',title:'撒け',sub:'3列の人混みを左右によけ、追っ手を振り切れ。',icon:'⇄'},
   {id:'eat',title:'食べろ',sub:'黄色い和服の大男。10人前のチャーハンを食べ切れ。',icon:'◒'},
@@ -282,35 +282,49 @@ class Laser extends Round {
 
 class Aim extends Round {
   id='aim' as const;
-  hint='動く白い照準を狙ってタップ。赤い心臓は撃つな';
+  hint='弾は中央から真上へ。動きを読んでタップ / Space';
   private baseHx=340+rand(41); private baseHy=262+rand(25);
-  private hx=this.baseHx; private hy=this.baseHy; private ax=360;private ay=440;
+  private hx=this.baseHx; private hy=this.baseHy;
   private offsetX=0; private offsetY=0;
+  private shot=false; private bulletY=559;
   private side=Math.random()<.5?-1:1;
   constructor(api:Api,stage:number){super(api,stage);this.duration=6/this.speed;}
-  protected update(_dt:number){
+  protected update(dt:number){
+    const previousHx=this.hx,previousHy=this.hy;
     const time=this.elapsed*this.speed;
     this.offsetX=Math.sin(time*2)*92*this.side;
     this.offsetY=Math.sin(time*3.1)*14;
     this.hx=this.baseHx+this.offsetX;this.hy=this.baseHy+this.offsetY;
+    if(!this.shot)return;
+    const previousY=this.bulletY;this.bulletY-=1030*dt;
+    // Sweep the bullet relative to the moving target so fast frames cannot skip a hit.
+    const impact=(offset:number,radius:number)=>{
+      const x0=360-previousHx-offset,y0=previousY-previousHy;
+      const dx=previousHx-this.hx,dy=this.bulletY-previousY+previousHy-this.hy;
+      const a=dx*dx+dy*dy,b=2*(x0*dx+y0*dy),c=x0*x0+y0*y0-radius*radius;
+      if(c<=0)return 0;
+      const discriminant=b*b-4*a*c;
+      if(a===0||discriminant<0)return Infinity;
+      const entry=(-b-Math.sqrt(discriminant))/(2*a);
+      return entry>=0&&entry<=1?entry:Infinity;
+    };
+    const heart=impact(0,32),target=impact(this.side*65,23);
+    const first=Math.min(heart,target);
+    if(Number.isFinite(first)){
+      this.bulletY=previousY+(this.bulletY-previousY)*first;
+      this.end(target<heart,target<heart?'急所を外し、正確に制圧。':'心臓に命中。任務失敗。');
+    }else if(this.bulletY<-24)this.end(false,'狙いが外れた。');
   }
-  controls(){return[{label:'照準を撃つ',action:'primary',key:'SPACE'}];}
-  move(x:number,y:number){this.ax=x;this.ay=y;}
-  pointer(x:number,y:number){this.ax=x;this.ay=y;this.action('primary');}
+  controls(){return[{label:'撃つ',action:'primary',key:'SPACE'}];}
+  pointer(){this.action('primary');}
   action(s:string){
-    if(this.ended)return;
-    if(['left','right','up','down'].includes(s)){
-      const step=8*this.speed;
-      this.ax+=s==='left'?-step:s==='right'?step:0;this.ay+=s==='up'?-step:s==='down'?step:0;return;
-    }
-    if(s!=='primary')return;this.api.sound('shoot');
-    const hit=Math.hypot(this.ax-(this.hx+this.side*65),this.ay-this.hy)<23;
-    const heart=Math.hypot(this.ax-this.hx,this.ay-this.hy)<32;
-    this.end(hit,hit?'急所を外し、正確に制圧。':heart?'心臓に命中。任務失敗。':'狙いが外れた。');
+    if(s!=='primary'||this.ended||this.shot)return;
+    this.shot=true;this.api.sound('shoot');
   }
   draw(c:CanvasRenderingContext2D){
     rect(c,0,0,W,H,'#172724');grid(c,40,'#223732');
     label(c,'PRECISION / NON-LETHAL',35,32,C.green);
+    c.save();c.setLineDash([5,8]);line(c,[[360,70],[360,549]],'#a4b19a66',1.5);c.restore();
     c.save();c.translate(360+this.offsetX,338+this.offsetY);
     c.beginPath();c.moveTo(-55,-170);c.lineTo(-140,-123);c.lineTo(-168,81);c.lineTo(-117,88);c.lineTo(-93,-24);c.lineTo(-84,198);c.lineTo(83,198);c.lineTo(93,-24);c.lineTo(117,88);c.lineTo(168,81);c.lineTo(140,-123);c.lineTo(55,-170);c.closePath();
     c.fillStyle='#55756960';c.fill();c.strokeStyle='#89a395';c.lineWidth=2;c.stroke();
@@ -326,9 +340,14 @@ class Aim extends Round {
     const tx=this.hx+this.side*65;
     cross(c,tx,this.hy,21,C.paper);
     line(c,[[tx+this.side*30,this.hy],[tx+this.side*100,this.hy]],C.paper);
-    text(c,'ここを狙え',tx+this.side*98,this.hy-21,15,C.paper);
-    cross(c,this.ax,this.ay,10,'#d6b77977');
-    rect(c,201,565,318,42,'#0c1916',3);text(c,'心臓は、撃つな。',360,587,20,C.red,'center',600);vignette(c);
+    text(c,'ここを通せ',tx+this.side*98,this.hy-21,15,C.paper);
+    rect(c,343,585,34,30,'#101a19',4);rect(c,350,567,20,30,'#56665e',3);
+    rect(c,354,559,12,29,'#c5ccb6',2);line(c,[[360,566],[360,585]],'#6e7a69',2);
+    if(this.shot){
+      line(c,[[360,this.bulletY+27],[360,this.bulletY+9]],'#d4b98066',2);
+      rect(c,357,this.bulletY-9,6,18,C.gold,3);
+    }
+    text(c,'心臓は、撃つな。',35,604,18,C.red,'left',600);label(c,'TAP TO FIRE',563,604,C.gold);vignette(c);
   }
 }
 

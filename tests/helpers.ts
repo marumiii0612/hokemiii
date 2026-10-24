@@ -7,6 +7,19 @@ export async function watchAimTarget(page:Page){
       if(radius===21)Object.assign(window,{drawnAimTarget:{x,y}});
       arc.call(this,x,y,radius,start,end,anticlockwise);
     };
+    const roundRect=CanvasRenderingContext2D.prototype.roundRect;
+    CanvasRenderingContext2D.prototype.roundRect=function(x,y,width,height,radii){
+      if(width===6&&height===18)Object.assign(window,{drawnAimBullet:{x:x+3,y:y+9}});
+      roundRect.call(this,x,y,width,height,radii);
+    };
+  });
+}
+
+export async function readAimBullet(page:Page){
+  return page.evaluate(()=>{
+    const bullet=(window as unknown as {drawnAimBullet?:{x:number;y:number}}).drawnAimBullet;
+    if(!bullet)throw new Error('The bullet has not been drawn.');
+    return bullet;
   });
 }
 

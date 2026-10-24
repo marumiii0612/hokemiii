@@ -196,7 +196,7 @@ document.addEventListener('keydown',e=>{
   if((e.key==='Escape'||e.code==='KeyP')&&['playing','briefing','feedback'].includes(state)){e.preventDefault();if(!e.repeat)setPaused(!paused);return;}
   if(state!=='playing'||paused)return;
   const action:Record<string,string>={Space:'primary',ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down',Digit1:'choice-0',Digit2:'choice-1',Digit3:'choice-2',Digit4:'choice-3',Numpad1:'choice-0',Numpad2:'choice-1',Numpad3:'choice-2',Numpad4:'choice-3'};
-  if(action[e.code]){e.preventDefault();if(!e.repeat||round?.id==='aim')dispatch(action[e.code]);}
+  if(action[e.code]){e.preventDefault();if(!e.repeat)dispatch(action[e.code]);}
 });
 document.addEventListener('visibilitychange',()=>{if(document.hidden)setPaused(true);});
 window.addEventListener('blur',()=>setPaused(true));
