@@ -9,7 +9,7 @@ export const missions: { id: GameId; title: string; sub: string; icon: string }[
   {id:'knife',title:'刺せ',sub:'バナナが中央に来たら、ナイフを投げろ。チャンスは一度。',icon:'↟'},
   {id:'map',title:'見つけろ',sub:'日本地図の間違いを見つけて、その場所をタップ。',icon:'⌖'},
   {id:'knock',title:'伝えろ',sub:'5桁の接触コードを、自分・相手・自分・相手・自分で伝えろ。',icon:'⠿'},
-  {id:'laser',title:'よけろ',sub:'予告の赤いラインから離れ、レーザーをよけ続けろ。',icon:'╳'},
+  {id:'laser',title:'よけろ',sub:'4列の縦レーザーを左右によけ、下の横レーザーはジャンプ。',icon:'╳'},
   {id:'aim',title:'狙え',sub:'心臓のすぐ横の白い照準を撃て。赤い心臓は撃つな。',icon:'⊕'},
   {id:'memory',title:'覚えろ',sub:'短時間だけ表示される写真を記憶し、続く質問に答えろ。',icon:'◷'},
   {id:'chase',title:'撒け',sub:'3列の人混みを左右によけ、追っ手を振り切れ。',icon:'⇄'},
@@ -204,19 +204,43 @@ class Knock extends Round {
 
 class Laser extends Round {
   id='laser' as const;
-  hint='赤い予告線から離れる。左右キー / 画面の左右をタップ';
-  private lane=1; private px=360; private wave=-1; private danger:number[]=[];
+  hint='左右で移動、中央でジャンプ。← → / ↑・Space';
+  private lanes=[150,290,430,570];
+  private lane=1; private px=290; private wave=-1; private danger:number[]=[];
+  private groundLaser=false;
   private period=1.65; private phase=0;
+  private jumping=false; private jumpTime=0; private jumpHeight=0;
   constructor(api:Api,stage:number){super(api,stage);this.duration=7/this.speed;this.period=1.65/this.speed;}
-  controls(){return[{label:'左へ',action:'left',key:'←'},{label:'右へ',action:'right',key:'→'}];}
-  action(s:string){if(s==='left')this.lane=Math.max(0,this.lane-1);if(s==='right')this.lane=Math.min(2,this.lane+1);}
-  pointer(x:number){this.action(x<360?'left':'right');}
+  controls(){return[{label:'左へ',action:'left',key:'←'},{label:'ジャンプ',action:'jump',key:'↑ / SPACE'},{label:'右へ',action:'right',key:'→'}];}
+  action(s:string){
+    if(this.ended)return;
+    if(s==='left')this.lane=Math.max(0,this.lane-1);
+    if(s==='right')this.lane=Math.min(this.lanes.length-1,this.lane+1);
+    if(['jump','up','primary'].includes(s)&&!this.jumping){this.jumping=true;this.jumpTime=0;this.api.sound('tap');}
+  }
+  pointer(x:number){this.action(x<240?'left':x>480?'right':'jump');}
+  private get firing(){return this.wave>=0&&this.phase>(this.groundLaser ? .45 : .57)&&this.phase<(this.groundLaser ? .65 : .77);}
   protected update(dt:number){
-    this.px+=(180+this.lane*180-this.px)*Math.min(1,dt*18);
+    const previousX=this.px;
+    this.px+=(this.lanes[this.lane]-this.px)*Math.min(1,dt*18);
+    if(this.jumping){
+      this.jumpTime+=dt*this.speed;
+      const progress=Math.min(1,this.jumpTime/1.2);
+      this.jumpHeight=112*4*progress*(1-progress);
+      if(progress>=1){this.jumping=false;this.jumpHeight=0;}
+    }
     const t=this.elapsed-.6/this.speed;if(t<0)return;
     const w=Math.floor(t/this.period); this.phase=(t%this.period)/this.period;
-    if(w!==this.wave){this.wave=w;this.danger=shuffle([0,1,2]).slice(0,this.stage>=9&&w%2?2:1);this.api.sound('warning');}
-    if(this.phase>.57&&this.phase<.77&&this.danger.includes(this.lane))this.end(false,'レーザーに触れた。');
+    if(w!==this.wave){
+      this.wave=w;this.groundLaser=w%2===1;
+      this.danger=this.groundLaser?[]:shuffle([0,1,2,3]).slice(0,this.stage>=9?2:1);
+      this.hint=this.groundLaser?'下の横レーザーはジャンプ。中央タップ / ↑・Space':'縦レーザーは左右によける。左右タップ / ← →';
+      this.api.sound('warning');
+    }
+    if(this.firing){
+      if(this.groundLaser){if(this.jumpHeight<36)this.end(false,'レーザーに触れた。');}
+      else if(this.danger.some(lane=>this.lanes[lane]>=Math.min(previousX,this.px)-28&&this.lanes[lane]<=Math.max(previousX,this.px)+28))this.end(false,'レーザーに触れた。');
+    }
   }
   protected timeout(){this.end(true,'セキュリティを突破した。');}
   draw(c:CanvasRenderingContext2D){
@@ -225,23 +249,34 @@ class Laser extends Round {
     for(let i=0;i<8;i++){const y=200+i*i*8;line(c,[[40,y],[680,y]],'#28373c');}
     for(let x=-500;x<1300;x+=200)line(c,[[vx,vy],[x,H]],'#28373c');
     rect(c,64,62,592,109,'#1c2a2e');line(c,[[64,171],[656,171]],'#587275',2);
-    [180,360,540].forEach((x,i)=>{
-      rect(c,x-53,77,106,68,'#0e171a',4);circle(c,x,112,8,this.danger.includes(i)?C.red:'#54766f');
+    this.lanes.forEach((x,i)=>{
+      rect(c,x-45,77,90,68,'#0e171a',4);circle(c,x,112,8,this.danger.includes(i)?C.red:'#54766f');
       text(c,`0${i+1}`,x,197,15,C.muted);
       if(this.danger.includes(i)){
-        const on=this.phase>.57&&this.phase<.77;
+        const on=this.firing;
         if(this.phase<.57||on){
           c.save(); c.globalAlpha=on?1:.2+.2*Math.sin(this.elapsed*24);
-          rect(c,x-60,226,120,360,'#e5534022');
+          rect(c,x-46,226,92,360,'#e5534022');
           c.shadowColor=C.red;c.shadowBlur=on?25:0;line(c,[[x,168],[x,604]],on?'#ffcead':C.red,on?9:2);
           c.restore(); if(!on)text(c,'!',x,271,24,C.red,'center',700);
         }
       }
     });
-    circle(c,this.px,557,39,'#00000070');
-    person(c,this.px,521,1.25,'#080c11','#161d22',Math.sin(this.elapsed*9)*4);
-    line(c,[[this.px-8,412],[this.px+8,412]],'#7b8888',3);
-    label(c,'SECURITY GRID / A-03',35,30,C.blue); label(c,'SURVIVE',35,604,C.gold);vignette(c);
+    if(this.groundLaser&&this.phase<.65){
+      const on=this.firing;
+      rect(c,59,510,28,33,'#24373b',3);rect(c,633,510,28,33,'#24373b',3);
+      circle(c,75,526,6,C.red);circle(c,645,526,6,C.red);
+      c.save();c.globalAlpha=on?1:.4+.2*Math.sin(this.elapsed*24);
+      rect(c,88,512,544,29,'#e5534022');
+      if(!on)c.setLineDash([13,10]);
+      c.shadowColor=C.red;c.shadowBlur=on?26:0;
+      line(c,[[88,526],[632,526]],on?'#ffcead':C.red,on?9:3);c.restore();
+      if(!on)text(c,'↑ ジャンプ',360,296,28,C.gold,'center',600);
+    }
+    c.beginPath();c.ellipse(this.px,557,32-this.jumpHeight*.1,9-this.jumpHeight*.025,0,0,Math.PI*2);c.fillStyle='#00000070';c.fill();
+    person(c,this.px,521-this.jumpHeight,1.25,'#080c11','#161d22',this.jumping?-5:Math.sin(this.elapsed*9)*4);
+    line(c,[[this.px-8,412-this.jumpHeight],[this.px+8,412-this.jumpHeight]],'#7b8888',3);
+    label(c,'SECURITY GRID / A-04',35,30,C.blue); label(c,'SURVIVE',35,604,C.gold);vignette(c);
   }
 }
 

@@ -154,7 +154,7 @@ function updateControls(){
     controlSignature=signature;
     el('controls').hidden=controls.length===0;
     const activeAction=(document.activeElement as HTMLElement)?.dataset.action;
-    el('controls').className=`controls ${controls.length===4?'four':controls.length===2?'two':''}`;
+    el('controls').className=`controls ${controls.length===4?'four':controls.length===3?'three':controls.length===2?'two':''}`;
     el('controls').replaceChildren(...controls.map(control=>{
       const button=document.createElement('button');button.className='control-button';button.dataset.action=control.action;
       const label=document.createElement('span');label.textContent=control.label;button.append(label);
