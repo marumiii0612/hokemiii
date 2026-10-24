@@ -200,10 +200,10 @@ test('complete eight real missions, then accelerate the second loop',async({page
   await page.keyboard.press('ArrowLeft');
   const advanceLaserTo=async(seconds:number)=>{
     const left=Number((await page.locator('#time-value').textContent())!.replace('s',''));
-    await page.clock.runFor(Math.max(0,(left-(7-seconds))*1000));
+    await page.clock.runFor(Math.max(0,(left-(10-seconds))*1000));
   };
-  await advanceLaserTo(2.35);await page.keyboard.press('Space');
-  await advanceLaserTo(5.65);await page.keyboard.press('ArrowUp');
+  await advanceLaserTo(3.55);await page.keyboard.press('Space');
+  await advanceLaserTo(8.65);await page.keyboard.press('ArrowUp');
   await page.clock.runFor(1500);
   await page.clock.runFor(2400);
   await expect(page.locator('#mission-title')).toHaveText('狙え。');

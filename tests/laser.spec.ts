@@ -7,7 +7,8 @@ async function laserFirst(page:Page){
     let sample=0;
     Math.random=()=>{sample++;return sample===6||sample===7 ? .999 : 0;};
   });
-  await page.clock.install();
+  const time=new Date('2026-10-24T12:00:00Z');
+  await page.clock.install({time});await page.clock.pauseAt(new Date(time.getTime()+1000));
   await page.getByRole('button',{name:'はじめる',exact:true}).click();
   await page.clock.runFor(1300);
   await expect(page.locator('#mission-title')).toHaveText('よけろ。');
@@ -35,10 +36,10 @@ test.describe('four laser columns and jumping',()=>{
       expect(boxes[1]!.x).toBeLessThan(boxes[2]!.x);
       if(input==='touch')await controls.getByRole('button',{name:'左へ'}).tap();
       else await page.keyboard.press('ArrowLeft');
-      await page.clock.runFor(2300);
+      await page.clock.runFor(3500);
       if(input==='touch')await controls.getByRole('button',{name:'ジャンプ'}).tap();
       else await page.keyboard.press('Space');
-      await page.clock.runFor(3300);
+      await page.clock.runFor(5100);
       await expect(page.locator('#result-screen')).toBeHidden();
       if(input==='touch')await tapCanvas(page,360,350);
       else await page.keyboard.press('ArrowUp');
@@ -67,25 +68,28 @@ test('low lasers require jumps, vertical lasers remain dangerous in the air, and
     try{
       const speeds=[1,9,57].map(stage=>{
         const speed=Math.min(2.4,1+Math.floor((stage-1)/8)*.2);
-        const recovery=stage===9?.45:0;
         const survive=run(stage);survive.game.action('left');
-        advance(survive.game,2.35/speed+recovery);survive.game.action('jump');
+        advance(survive.game,2.35/speed+1.2);survive.game.action('jump');
         advance(survive.game,.55/speed);survive.game.action('jump'); // A tap in midair must not restart the jump.
-        advance(survive.game,2.75/speed+2*recovery);survive.game.action('up');
+        advance(survive.game,2.75/speed+1.8);survive.game.action('up');
         advance(survive.game,1.5/speed);
-        const left=run(stage);left.game.action('left');advance(left.game,3.35/speed+recovery);
-        const right=run(stage);right.game.action('right');right.game.action('right');advance(right.game,3.35/speed+recovery);
-        const vertical=run(stage);advance(vertical.game,.8/speed);vertical.game.action('primary');advance(vertical.game,1/speed);
-        return {survived:survive.verdict[0],lowHitsLeft:left.verdict[0]===false,lowHitsRight:right.verdict[0]===false,verticalHitsInAir:vertical.verdict[0]===false};
+        const early=run(stage);early.game.action('left');
+        advance(early.game,2.25/speed+.91);early.game.action('jump');
+        advance(early.game,3.3/speed+1.8);early.game.action('jump');
+        advance(early.game,early.game.duration-early.game.elapsed+.01);
+        const left=run(stage);left.game.action('left');advance(left.game,3.35/speed+1.2);
+        const right=run(stage);right.game.action('right');right.game.action('right');advance(right.game,3.35/speed+1.2);
+        const vertical=run(stage);advance(vertical.game,.8/speed+.3);vertical.game.action('primary');advance(vertical.game,1/speed);
+        return {survived:survive.verdict[0],earlyJumpSurvives:early.verdict[0]===true,lowHitsLeft:left.verdict[0]===false,lowHitsRight:right.verdict[0]===false,verticalHitsInAir:vertical.verdict[0]===false};
       });
       let sample=0;Math.random=()=>sample++%3===0?0:.999;
-      const fourth=run(1);for(let i=0;i<10;i++)fourth.game.action('right');advance(fourth.game,2);
+      const fourth=run(1);for(let i=0;i<10;i++)fourth.game.action('right');advance(fourth.game,2.3);
       Math.random=()=>.999;
-      const first=run(1);for(let i=0;i<10;i++)first.game.action('left');advance(first.game,2);
+      const first=run(1);for(let i=0;i<10;i++)first.game.action('left');advance(first.game,2.3);
       return {speeds,fourthColumnHits:fourth.verdict[0]===false,firstColumnHits:first.verdict[0]===false};
     }finally{Math.random=original;}
   });
-  expect(result).toEqual({speeds:Array.from({length:3},()=>({survived:true,lowHitsLeft:true,lowHitsRight:true,verticalHitsInAir:true})),fourthColumnHits:true,firstColumnHits:true});
+  expect(result).toEqual({speeds:Array.from({length:3},()=>({survived:true,earlyJumpSurvives:true,lowHitsLeft:true,lowHitsRight:true,verticalHitsInAir:true})),fourthColumnHits:true,firstColumnHits:true});
 });
 
 test('combined beams unlock gradually and require both moving and jumping at the same time',async({page})=>{
@@ -107,15 +111,14 @@ test('combined beams unlock gradually and require both moving and jumping at the
       Math.random=()=>0;
       const verdict:boolean[]=[];
       const speed=Math.min(2.4,1+Math.floor((stage-1)/8)*.2);
-      const recovery=stage===9?.45:0;
       const game=createRound('laser',{finish:(ok:boolean)=>verdict.push(ok),sound:()=>{}},stage);
       game.action('left');
-      advance(game,2.35/speed+recovery);game.action('jump');
+      advance(game,2.35/speed+1.2);game.action('jump');
       advance(game,.85/speed);const early=beams(game,290);
-      advance(game,2.3/speed+2*recovery);
+      advance(game,2.3/speed+1.5);
       // Put the last vertical beams in the player's current column, requiring a move.
       Math.random=()=>.999;
-      advance(game,.2/speed);
+      advance(game,.2/speed+.3);
       if(move){game.action('right');game.action('right');}
       if(jump)game.action('jump');
       advance(game,.7/speed);const late=beams(game,150);
@@ -142,30 +145,41 @@ test('combined beams unlock gradually and require both moving and jumping at the
   });
 });
 
-test('the second loop adds quiet gaps and keeps four short laser bursts',async({page})=>{
+test('every loop gives longer warnings, quiet gaps and four short laser bursts',async({page})=>{
   await page.goto('/');
   const result=await page.evaluate(async()=>{
     const modulePath='/src/games.ts';
     const {createRound}=await import(/* @vite-ignore */ modulePath);
     const original=Math.random;Math.random=()=>0;
-    const warnings:number[]=[];const verdict:boolean[]=[];
     const canvas=document.createElement('canvas');canvas.width=720;canvas.height=640;
     const c=canvas.getContext('2d')!;
-    const game=createRound('laser',{finish:(ok:boolean)=>verdict.push(ok),sound:(kind:string)=>{if(kind==='warning')warnings.push(game.elapsed);}},9);
-    const advanceTo=(time:number)=>{
-      for(let left=time-game.elapsed;left>1e-8;left-=.005)game.tick(Math.min(.005,left));
-    };
     try{
-      game.action('left');advanceTo(2.05);game.draw(c);
-      const quiet=game.hint==='次の予告を待て。'&&[150,290,430,570].every(x=>c.getImageData(x,112,1,1).data[0]<120);
-      advanceTo(2.35/1.2+.45);game.action('jump');
-      advanceTo(2.7);game.draw(c);const oldFiringTimeIsSafe=c.getImageData(360,526,1,1).data[0]<100;
-      advanceTo(3.05);game.draw(c);const delayedBeamFires=c.getImageData(360,526,1,1).data[0]>180;
-      advanceTo(5.65/1.2+1.35);game.action('up');advanceTo(game.duration+.02);
-      return {quiet,oldFiringTimeIsSafe,delayedBeamFires,intervals:warnings.slice(1).map((time:number,i:number)=>time-warnings[i]),bursts:warnings.length,ok:verdict[0]};
+      return [1,9,17,57].map(stage=>{
+        const speed=Math.min(2.4,1+Math.floor((stage-1)/8)*.2);
+        const warnings:number[]=[];const verdict:boolean[]=[];
+        const game=createRound('laser',{finish:(ok:boolean)=>verdict.push(ok),sound:(kind:string)=>{if(kind==='warning')warnings.push(game.elapsed);}},stage);
+        const advanceTo=(time:number)=>{
+          for(let left=time-game.elapsed;left>1e-8;left-=.005)game.tick(Math.min(.005,left));
+        };
+        const oldFiringTime=(.6+.57*1.65)/speed;
+        game.action('left');advanceTo(oldFiringTime+.1);game.draw(c);
+        const oldFiringTimeIsSafe=c.getImageData(290,300,1,1).data[0]<180;
+        advanceTo(oldFiringTime+.32);game.draw(c);
+        const delayedBeamFires=c.getImageData(290,300,1,1).data[0]>180;
+        const quietStart=2.25/speed+.3;
+        const quiet=[.1,.55].every(offset=>{
+          advanceTo(quietStart+offset);game.draw(c);
+          return game.hint==='次の予告を待て。'&&[150,290,430,570].every(x=>c.getImageData(x,112,1,1).data[0]<120);
+        });
+        advanceTo(2.35/speed+1.2);game.action('jump');
+        advanceTo(5.65/speed+3);game.action('up');advanceTo(game.duration+.02);
+        return {speed,quiet,oldFiringTimeIsSafe,delayedBeamFires,intervals:warnings.slice(1).map((time:number,i:number)=>time-warnings[i]),bursts:warnings.length,ok:verdict[0]};
+      });
     }finally{Math.random=original;}
   });
-  expect(result.quiet).toBe(true);expect(result.oldFiringTimeIsSafe).toBe(true);expect(result.delayedBeamFires).toBe(true);
-  expect(result.bursts).toBe(4);expect(result.ok).toBe(true);
-  for(const interval of result.intervals)expect(interval).toBeCloseTo(1.825,2);
+  for(const loop of result){
+    expect(loop.quiet).toBe(true);expect(loop.oldFiringTimeIsSafe).toBe(true);expect(loop.delayedBeamFires).toBe(true);
+    expect(loop.bursts).toBe(4);expect(loop.ok).toBe(true);
+    for(const interval of loop.intervals)expect(interval).toBeCloseTo(1.65/loop.speed+.9,2);
+  }
 });

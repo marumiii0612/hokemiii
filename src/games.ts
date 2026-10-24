@@ -282,12 +282,14 @@ class Laser extends Round {
   private lane=1; private px=290; private wave=-1; private danger:number[]=[];
   private groundLaser=false;
   private period=1.65; private cycleDuration=1.65; private phase=0;
-  private jumping=false; private jumpTime=0; private jumpHeight=0;
+  private readonly warningExtra=.3;
+  private jumping=false; private jumpTime=0; private jumpHeight=0; private jumpDuration=1.2;
   constructor(api:Api,stage:number){
     super(api,stage);
-    const recovery=stage>=9&&stage<=16 ? .45 : 0;
-    this.cycleDuration=1.65/this.speed;this.period=this.cycleDuration+recovery;
-    this.duration=7/this.speed+3*recovery;
+    const recovery=.6;
+    this.cycleDuration=1.65/this.speed;this.period=this.cycleDuration+this.warningExtra+recovery;
+    this.duration=7/this.speed+4*this.warningExtra+3*recovery;
+    this.jumpDuration=1.2/this.speed+.45;
   }
   controls(){return[{label:'左へ',action:'left',key:'←'},{label:'ジャンプ',action:'jump',key:'↑ / SPACE'},{label:'右へ',action:'right',key:'→'}];}
   action(s:string){
@@ -302,13 +304,13 @@ class Laser extends Round {
     const previousX=this.px;
     this.px+=(this.lanes[this.lane]-this.px)*Math.min(1,dt*18);
     if(this.jumping){
-      this.jumpTime+=dt*this.speed;
-      const progress=Math.min(1,this.jumpTime/1.2);
+      this.jumpTime+=dt;
+      const progress=Math.min(1,this.jumpTime/this.jumpDuration);
       this.jumpHeight=112*4*progress*(1-progress);
       if(progress>=1){this.jumping=false;this.jumpHeight=0;}
     }
     const t=this.elapsed-.6/this.speed;if(t<0)return;
-    const w=Math.floor(t/this.period); this.phase=(t%this.period)/this.cycleDuration;
+    const w=Math.floor(t/this.period); this.phase=Math.max(0,(t%this.period-this.warningExtra)/this.cycleDuration);
     if(w!==this.wave){
       this.wave=w;this.groundLaser=w%2===1;
       const combined=this.groundLaser&&this.stage>=9&&(w%4===3||this.stage>=17);
