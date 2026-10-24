@@ -10,7 +10,7 @@ export const missions: { id: GameId; title: string; sub: string; icon: string }[
   {id:'map',title:'見つけろ',sub:'日本地図の間違いを見つけて、その場所をタップ。',icon:'⌖'},
   {id:'knock',title:'伝えろ',sub:'5桁の接触コードを、自分・相手・自分・相手・自分で伝えろ。',icon:'⠿'},
   {id:'laser',title:'よけろ',sub:'4列の縦レーザーを左右によけ、下の横レーザーはジャンプ。',icon:'╳'},
-  {id:'aim',title:'狙え',sub:'心臓のすぐ横の白い照準を撃て。赤い心臓は撃つな。',icon:'⊕'},
+  {id:'aim',title:'狙え',sub:'動く人物の、心臓のすぐ横を狙え。白い照準を撃て。',icon:'⊕'},
   {id:'memory',title:'覚えろ',sub:'短時間だけ表示される写真を記憶し、続く質問に答えろ。',icon:'◷'},
   {id:'chase',title:'撒け',sub:'3列の人混みを左右によけ、追っ手を振り切れ。',icon:'⇄'},
   {id:'eat',title:'食べろ',sub:'黄色い和服の大男。10人前のチャーハンを食べ切れ。',icon:'◒'},
@@ -282,15 +282,27 @@ class Laser extends Round {
 
 class Aim extends Round {
   id='aim' as const;
-  hint='赤い心臓の横、白い照準の中をタップして撃つ';
-  private hx=340+rand(41); private hy=262+rand(25); private ax=360;private ay=440;
+  hint='動く白い照準を狙ってタップ。赤い心臓は撃つな';
+  private baseHx=340+rand(41); private baseHy=262+rand(25);
+  private hx=this.baseHx; private hy=this.baseHy; private ax=360;private ay=440;
+  private offsetX=0; private offsetY=0;
   private side=Math.random()<.5?-1:1;
   constructor(api:Api,stage:number){super(api,stage);this.duration=6/this.speed;}
+  protected update(_dt:number){
+    const time=this.elapsed*this.speed;
+    this.offsetX=Math.sin(time*2)*92*this.side;
+    this.offsetY=Math.sin(time*3.1)*14;
+    this.hx=this.baseHx+this.offsetX;this.hy=this.baseHy+this.offsetY;
+  }
   controls(){return[{label:'照準を撃つ',action:'primary',key:'SPACE'}];}
   move(x:number,y:number){this.ax=x;this.ay=y;}
   pointer(x:number,y:number){this.ax=x;this.ay=y;this.action('primary');}
   action(s:string){
-    if(['left','right','up','down'].includes(s)){this.ax+=s==='left'?-8:s==='right'?8:0;this.ay+=s==='up'?-8:s==='down'?8:0;return;}
+    if(this.ended)return;
+    if(['left','right','up','down'].includes(s)){
+      const step=8*this.speed;
+      this.ax+=s==='left'?-step:s==='right'?step:0;this.ay+=s==='up'?-step:s==='down'?step:0;return;
+    }
     if(s!=='primary')return;this.api.sound('shoot');
     const hit=Math.hypot(this.ax-(this.hx+this.side*65),this.ay-this.hy)<23;
     const heart=Math.hypot(this.ax-this.hx,this.ay-this.hy)<32;
@@ -299,7 +311,7 @@ class Aim extends Round {
   draw(c:CanvasRenderingContext2D){
     rect(c,0,0,W,H,'#172724');grid(c,40,'#223732');
     label(c,'PRECISION / NON-LETHAL',35,32,C.green);
-    c.save();c.translate(360,338);
+    c.save();c.translate(360+this.offsetX,338+this.offsetY);
     c.beginPath();c.moveTo(-55,-170);c.lineTo(-140,-123);c.lineTo(-168,81);c.lineTo(-117,88);c.lineTo(-93,-24);c.lineTo(-84,198);c.lineTo(83,198);c.lineTo(93,-24);c.lineTo(117,88);c.lineTo(168,81);c.lineTo(140,-123);c.lineTo(55,-170);c.closePath();
     c.fillStyle='#55756960';c.fill();c.strokeStyle='#89a395';c.lineWidth=2;c.stroke();
     circle(c,0,-209,44,'#54746555');circle(c,0,-209,44,'#89a395',true,2);

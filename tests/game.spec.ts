@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { tapCanvas } from './helpers';
+import { tapCanvas, watchAimTarget, readAimTarget } from './helpers';
 
 async function deterministic(page:Page){
   await page.addInitScript(()=>{Math.random=()=>0;});
@@ -171,6 +171,7 @@ for(const cleared of [40,41]){
 
 test('complete eight real missions, then accelerate the second loop',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  await watchAimTarget(page);
   await deterministic(page);await page.clock.install();
   await page.getByRole('button',{name:'はじめる',exact:true}).click();
   await page.clock.runFor(1300);
@@ -206,7 +207,7 @@ test('complete eight real missions, then accelerate the second loop',async({page
   await page.clock.runFor(1500);
   await page.clock.runFor(2400);
   await expect(page.locator('#mission-title')).toHaveText('狙え。');
-  await tapCanvas(page,275,262);
+  const target=await readAimTarget(page);await tapCanvas(page,target.x,target.y);
   await page.clock.runFor(5600);
   await expect(page.locator('#mission-title')).toHaveText('覚えろ。');
   await page.locator('#controls').getByRole('button',{name:'深い赤'}).click();
