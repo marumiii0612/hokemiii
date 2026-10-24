@@ -177,6 +177,7 @@ test('complete eight real missions, then accelerate the second loop',async({page
   await tapCanvas(page,330,336);
   await page.clock.runFor(2400);
   await expect(page.locator('#mission-title')).toHaveText('伝えろ。');
+  await page.clock.runFor(4000);
   for(let turn=0;turn<3;turn++){
     for(let tap=0;tap<2;tap++)await page.locator('#controls').getByRole('button',{name:/^ノック/}).click();
     if(turn<2){await page.clock.runFor(2000);continue;}
@@ -260,10 +261,10 @@ test('each mission has functional success, failure and escalating speed',async({
       lateDodge.game.action('left');for(let i=0;i<620;i++)lateDodge.game.tick(.01);results.lateChaseDodge=lateDodge.verdict[0]?.ok;
       const eat=run('eat');for(let i=0;i<9;i++)eat.game.action('primary');results.eatNeedsTen=eat.verdict.length===0;eat.game.action('primary');results.eat=eat.verdict[0]?.ok;
       results.noEatCounter=eat.game.controls()[0].label==='食べる';
-      const overknock=run('knock');for(let i=0;i<3;i++)overknock.game.action('primary');results.overknock=overknock.verdict[0]?.ok===false;
+      const overknock=run('knock');for(let i=0;i<401;i++)overknock.game.tick(.01);for(let i=0;i<3;i++)overknock.game.action('primary');results.overknock=overknock.verdict[0]?.ok===false;
       results.noKnockCounter=overknock.game.controls()[0].label==='ノック';
       Math.random=()=>.999;
-      const maxKnock=run('knock',65);for(let i=0;i<9;i++)maxKnock.game.action('primary');
+      const maxKnock=run('knock',65);for(let i=0;i<168;i++)maxKnock.game.tick(.01);for(let i=0;i<9;i++)maxKnock.game.action('primary');
       results.knockAllowsNine=maxKnock.verdict.length===0;maxKnock.game.action('primary');results.knockRejectsTen=maxKnock.verdict[0]?.ok===false;
       Math.random=()=>0;
       const memory=run('memory');memory.game.action('choice-0');results.memoryHidden=memory.verdict.length===0;for(let i=0;i<310;i++)memory.game.tick(.01);memory.game.action('choice-0');results.memory=memory.verdict[0]?.ok===false; // shuffled first choice is gray, not red

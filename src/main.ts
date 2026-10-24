@@ -151,7 +151,7 @@ function finishRound(ok:boolean,message:string){
   if(round?.id==='knock'){
     el('transition').classList.add('door-clear');
     el('game-hint').textContent='認証成功。扉が開きます。';
-    canvas.setAttribute('aria-label','接触コードの照合に成功し、扉が開きます。');
+    canvas.setAttribute('aria-label','認証コードの照合に成功し、扉が開きます。');
   }
   el('controls').querySelectorAll('button').forEach(b=>b.disabled=true);
 }

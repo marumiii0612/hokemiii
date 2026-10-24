@@ -8,7 +8,7 @@ type Api = { finish: (ok: boolean, message: string) => void; sound: (kind: 'tap'
 export const missions: { id: GameId; title: string; sub: string; icon: string }[] = [
   {id:'knife',title:'刺せ',sub:'バナナが中央に来たら、ナイフを投げろ。チャンスは一度。',icon:'↟'},
   {id:'map',title:'見つけろ',sub:'日本地図の間違いを見つけて、その場所をタップ。',icon:'⌖'},
-  {id:'knock',title:'伝えろ',sub:'5桁の接触コードを、自分・相手・自分・相手・自分で伝えろ。',icon:'⠿'},
+  {id:'knock',title:'伝えろ',sub:'紙の5桁の認証コードを覚え、自分・相手・自分・相手・自分でノック。',icon:'⠿'},
   {id:'laser',title:'よけろ',sub:'4列の縦レーザーを左右によけ、下の横レーザーはジャンプ。',icon:'╳'},
   {id:'aim',title:'狙え',sub:'中央から真上に1発。動く白い照準を狙え。心臓は撃つな。',icon:'⊕'},
   {id:'memory',title:'覚えろ',sub:'短時間だけ表示される写真を記憶し、続く質問に答えろ。',icon:'◷'},
@@ -133,37 +133,109 @@ class Find extends Round {
 class Knock extends Round {
   id='knock' as const;
   successDuration=1.45;
-  hint='光っている数字の回数だけノック。青い番は相手が返す。';
+  hint='紙の5桁の認証コードを覚えろ。消えたらノック。';
   private code=Array.from({length:5},()=>Math.min(6,2+Math.floor((this.stage-1)/8))+rand(4));
   private turn=0; private taps=0; private delay=0; private lastAuto=0; private ripples:number[]=[];
   private doorOpening=0;
-  constructor(api:Api,stage:number){super(api,stage);this.duration=16/this.speed;}
-  controls(){return this.turn===5?[]:[{label:this.turn%2?'応答を待て…':'ノック',action:'primary',key:'SPACE'}];}
+  private paper?:HTMLCanvasElement;
+  private dust:{x:number;y:number;release:number;drift:number;size:number;color:string}[]=[];
+  private get knocking(){return this.elapsed>=4/this.speed;}
+  constructor(api:Api,stage:number){super(api,stage);this.duration=20/this.speed;}
+  controls(){return !this.knocking||this.turn===5?[]:[{label:this.turn%2?'応答を待て…':'ノック',action:'primary',key:'SPACE'}];}
   animateSuccess(dt:number){if(this.turn===5)this.doorOpening=Math.min(1,this.doorOpening+dt/.8);}
   protected update(dt:number){
+    if(!this.knocking){
+      this.hint=this.elapsed<3/this.speed?'紙の5桁の認証コードを覚えろ。消えたらノック。':'紙が消える。覚えたコードを、自分・相手の順で。';
+      return;
+    }
+    this.hint='記憶した回数だけノック。青い番は相手が返す。';
     this.ripples=this.ripples.map(r=>r+dt).filter(r=>r<.7);
-    if(this.delay>0){this.delay-=dt;if(this.delay<=0){this.turn++;this.taps=0;this.lastAuto=this.elapsed;if(this.turn===5)this.end(true,'接触コード、照合完了。');}return;}
+    if(this.delay>0){this.delay-=dt;if(this.delay<=0){this.turn++;this.taps=0;this.lastAuto=this.elapsed;if(this.turn===5)this.end(true,'認証コード、照合完了。');}return;}
     if(this.turn%2&&this.elapsed-this.lastAuto>.32/this.speed){this.lastAuto=this.elapsed;this.knock();}
   }
   private knock(){this.taps++;this.api.sound('tap');this.ripples.push(0);if(this.taps===this.code[this.turn])this.delay=.55/this.speed;}
   action(s:string){
-    if(s!=='primary'||this.turn%2||this.ended)return;
-    if(this.delay>0){this.end(false,'ノックが多い。接触コード不一致。');return;}
+    if(s!=='primary'||!this.knocking||this.turn%2||this.ended)return;
+    if(this.delay>0){this.end(false,'ノックが多い。認証コード不一致。');return;}
     this.knock();
   }
   pointer(){this.action('primary');}
   draw(c:CanvasRenderingContext2D){
     rect(c,0,0,W,H,'#19201d');
     const g=c.createRadialGradient(360,300,50,360,300,470);g.addColorStop(0,'#434433');g.addColorStop(1,'#141a17');c.fillStyle=g;c.fillRect(0,0,W,H);
-    label(c,'CONTACT CODE / EYES ONLY',40,35,C.gold);
-    this.code.forEach((v,i)=>{const active=i===this.turn;rect(c,177+i*77,68,60,67,active?(this.turn%2?'#4e6d75':'#c7b180'):'#26302b',3);text(c,String(v),207+i*77,102,34,active?C.ink:i<this.turn?C.green:C.muted,'center',600);text(c,i%2?'相手':'自分',207+i*77,155,13,C.muted);});
     this.drawDoor(c);
-    if(this.turn<5){
+    if(!this.knocking){
+      rect(c,0,0,W,H,'#111915ae');
+      label(c,'AUTHENTICATION / EYES ONLY',40,35,C.gold);
+      this.drawPaper(c,Math.max(0,this.elapsed*this.speed-3));
+      text(c,this.elapsed<3/this.speed?'コードを記憶せよ':'紙は残らない。記憶で伝えろ。',360,552,24,C.gold,'center',600);
+    }else{
+      label(c,'CONTACT / MEMORY ONLY',40,35,C.gold);
+      for(let i=0;i<5;i++){
+        const active=i===this.turn;
+        rect(c,177+i*77,80,60,46,active?(this.turn%2?'#4e6d75':'#c7b180'):'#26302b',3);
+        text(c,i%2?'相手':'自分',207+i*77,104,16,active?C.ink:i<this.turn?C.green:C.muted,'center',600);
+      }
+    }
+    if(this.knocking&&this.turn<5){
       this.ripples.forEach(r=>{circle(c,347,451,18+r*100,`rgba(221,198,143,${.7-r})`,true,2);});
       rect(c,223,543,274,54,'#17201be8',3);
       text(c,this.turn%2?'相手の応答を待て':'あなたの番',360,569,23,this.turn%2?C.blue:C.gold,'center',600);
     }
     vignette(c);
+  }
+  private grainNoise(seed:number){const value=Math.sin(seed*127.1+311.7)*43758.5453;return value-Math.floor(value);}
+  private preparePaper(){
+    const paper=document.createElement('canvas');paper.width=480;paper.height=280;
+    const c=paper.getContext('2d')!;
+    rect(c,0,0,480,280,'#e9dfc2');
+    const shade=c.createLinearGradient(0,0,480,280);
+    shade.addColorStop(0,'#fff9e142');shade.addColorStop(.5,'#a78c5620');shade.addColorStop(1,'#fff9e130');
+    c.fillStyle=shade;c.fillRect(0,0,480,280);
+    for(let i=0;i<650;i++)rect(c,this.grainNoise(i)*480,this.grainNoise(i+700)*280,1,1,'#79694f23');
+    line(c,[[238,0],[241,280]],'#a6936525');line(c,[[240,0],[243,280]],'#fff8df65');
+    line(c,[[30,96],[450,96]],'#9f8c63',1);
+    text(c,'認証コード（5桁）',240,62,27,'#352f24','center',600);
+    this.code.forEach((digit,i)=>text(c,String(digit),96+i*72,151,54,'#29291f','center',600));
+    text(c,'自分 → 相手 → 自分 → 相手 → 自分',240,216,16,'#62583f');
+    label(c,'EYES ONLY / 記憶後、破棄',30,253,'#81734f');
+    c.beginPath();c.moveTo(449,0);c.lineTo(480,31);c.lineTo(449,31);c.closePath();c.fillStyle='#c1b492';c.fill();
+    const pixels=c.getImageData(0,0,480,280).data;
+    // Fixed grain patterns keep the animation stable without consuming game randomness.
+    this.dust=Array.from({length:1100},(_,i)=>{
+      const x=Math.floor(this.grainNoise(i+1500)*480),y=Math.floor(this.grainNoise(i+3000)*280);
+      const column=Math.floor(x/4),start=this.grainNoise(column+4500)*.14;
+      const at=(y*480+x)*4;
+      return{x,y,release:start+y/280*.65,drift:140+this.grainNoise(i+6000)*220,size:1.5+this.grainNoise(i+7500)*2,
+        color:`rgb(${pixels[at]},${pixels[at+1]},${pixels[at+2]})`};
+    });
+    this.paper=paper;
+  }
+  private drawPaper(c:CanvasRenderingContext2D,progress:number){
+    if(!this.paper)this.preparePaper();
+    c.save();c.translate(360,313);c.rotate(-.035);c.translate(-240,-140);
+    if(progress===0){
+      c.shadowColor='#0009';c.shadowBlur=30;c.shadowOffsetY=12;c.drawImage(this.paper!,0,0);
+      c.shadowBlur=0;c.shadowOffsetY=0;
+    }else{
+      // Erode narrow strips from the top, then let their grains drift downwind.
+      c.save();c.beginPath();
+      for(let column=0;column<120;column++){
+        const start=this.grainNoise(column+4500)*.14;
+        const edge=Math.max(0,Math.min(280,(progress-start)/.65*280));
+        if(column===0)c.moveTo(0,edge);else c.lineTo(column*4,edge);
+        c.lineTo((column+1)*4,edge);
+      }
+      c.lineTo(480,280);c.lineTo(0,280);c.closePath();c.clip();c.drawImage(this.paper!,0,0);c.restore();
+      this.dust.forEach(grain=>{
+        const age=progress-grain.release;
+        if(age<0||age>.35)return;
+        c.globalAlpha=(1-age/.35)*Math.min(1,(1-progress)*8);
+        c.fillStyle=grain.color;
+        c.fillRect(grain.x+age*grain.drift,grain.y+age*age*740,grain.size,grain.size);
+      });
+    }
+    c.restore();
   }
   private drawDoor(c:CanvasRenderingContext2D){
     rect(c,175,190,370,450,'#0e1512',4);
