@@ -22,6 +22,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
         <span class="eyebrow">THE FIELD IS WAITING.</span>
         <h1 class="game-title">HOKEMI</h1>
         <button id="start-button" class="start-button">はじめる<span class="start-arrow">${arrow}</span></button>
+        <button id="checkpoint-start-button" class="secondary-button checkpoint-start" hidden>21からはじめる ${arrow}</button>
         <p class="title-tagline">判断は、一瞬。</p>
         <div class="title-rule"></div>
         <p class="title-description">八つの任務。一度きりの判断。<br>どこまで生き残れるか。</p>
@@ -56,6 +57,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
       <p id="new-record" class="new-record" hidden>NEW PERSONAL BEST</p>
       <div class="result-best">自己最高記録 <strong id="result-best">0</strong> STAGES</div>
       <button id="retry-button" class="primary-button">もう一度、潜入する ${arrow}</button>
+      <button id="alternate-retry-button" class="secondary-button" hidden>21からリスタート ${arrow}</button>
       <button id="share-button" class="secondary-button">記録を共有する <span>↗</span></button>
       <div id="share-fallback" hidden><p>この記録をコピーして共有できます。</p><textarea id="share-text" readonly aria-label="共有用の記録"></textarea></div>
       <button id="back-button" class="text-button">タイトルへ戻る</button>
@@ -63,7 +65,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
 
     <footer class="site-footer"><span>FICTIONAL OPERATIONS BUREAU</span><span>EST. 2026 <i>●</i> JP</span></footer>
   </div>
-  <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-header"><span class="eyebrow">FIELD MANUAL</span><button id="close-help" class="icon-button" aria-label="遊び方を閉じる">×</button></div><h2 id="help-title">任務の手引き<span>。</span></h2><p class="help-intro">ランダムに続く8つのミニゲーム。<br>制限時間内に成功させ、自己最高記録を目指せ。</p><div class="mission-list">${missions.map(m=>`<div class="manual-mission"><span>${m.icon}</span><div><h3>${m.title}</h3><p>${m.sub}</p></div></div>`).join('')}</div><div class="manual-note"><p>ミスするまでステージは続き、40クリアまでは任務失敗、41クリア以上は殉職。8ステージごとに1周し、2周目は1.2倍、3周目は1.4倍と加速（最大2.4倍）。記録はこの端末に保存されます。</p><p>PC：画面クリック・Space・矢印キー・数字1〜4。P / Escで一時停止。スマホ：画面または操作ボタンをタップ。</p></div><details><summary>このゲームについて・地図の出典</summary><p>VIVANTに着想を得た、非公式のオリジナルファンゲームです。作品の画像・音源や俳優の肖像は使用していません。記憶写真はオリジナルイラストです。</p><p>日本地図：国土地理院「地球地図日本」。dataofjapan/land の地理データを簡略化して使用。一部の島嶼は省略しています。地図データの利用条件は <a href="https://github.com/dataofjapan/land" target="_blank" rel="noreferrer">配布元</a> を参照してください。</p></details></dialog>
+  <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-header"><span class="eyebrow">FIELD MANUAL</span><button id="close-help" class="icon-button" aria-label="遊び方を閉じる">×</button></div><h2 id="help-title">任務の手引き<span>。</span></h2><p class="help-intro">ランダムに続く8つのミニゲーム。<br>制限時間内に成功させ、自己最高記録を目指せ。</p><div class="mission-list">${missions.map(m=>`<div class="manual-mission"><span>${m.icon}</span><div><h3>${m.title}</h3><p>${m.sub}</p></div></div>`).join('')}</div><div class="manual-note"><p>ミスするまでステージは続き、40クリアまでは任務失敗、41クリア以上は殉職。8ステージごとに1周し、2周目は1.2倍、3周目は1.4倍と加速（最大2.4倍）。20クリアで21からの再開を解放。記録はこの端末に保存されます。</p><p>PC：画面クリック・Space・矢印キー・数字1〜4。P / Escで一時停止。スマホ：画面または操作ボタンをタップ。</p></div><details><summary>このゲームについて・地図の出典</summary><p>VIVANTに着想を得た、非公式のオリジナルファンゲームです。作品の画像・音源や俳優の肖像は使用していません。記憶写真はオリジナルイラストです。</p><p>日本地図：国土地理院「地球地図日本」。dataofjapan/land の地理データを簡略化して使用。一部の島嶼は省略しています。地図データの利用条件は <a href="https://github.com/dataofjapan/land" target="_blank" rel="noreferrer">配布元</a> を参照してください。</p></details></dialog>
   <div id="toast" class="toast" role="status" hidden></div>
 `;
 
@@ -74,6 +76,7 @@ try{const n=Number(localStorage.getItem('sennyu-best-v1'));if(Number.isFinite(n)
 let state:'title'|'briefing'|'playing'|'feedback'|'result'='title';
 let round:Round|null=null, bag:GameId[]=[], lastGame:GameId|null=null;
 let cleared=0,paused=false,transitionTime=0,controlSignature='',lastHint='',oldBest=best;
+let runStart:1|21=1;
 let finalReason='',lastFrame=performance.now(),toastTimer=0;
 const canvas=el<HTMLCanvasElement>('game-canvas');
 const ctx=canvas.getContext('2d')!;
@@ -82,16 +85,28 @@ resizeCanvas();window.addEventListener('resize',resizeCanvas);
 
 function updateSound(){el('sound-button').setAttribute('aria-pressed',String(audio.enabled));el('sound-button').setAttribute('aria-label',audio.enabled?'音をオフにする':'音をオンにする');el('sound-button').querySelector('span')!.textContent=audio.enabled?'ON':'OFF';}
 updateSound();
-function updateBest(){el('title-best').textContent=String(best).padStart(2,'0');el('result-best').textContent=String(best);}
+function updateBest(){
+  el('title-best').textContent=String(best).padStart(2,'0');el('result-best').textContent=String(best);
+  el('checkpoint-start-button').hidden=best<20;el('alternate-retry-button').hidden=best<20;
+  el('retry-button').innerHTML=`${runStart===21?'21からリスタート':'もう一度、潜入する'} ${arrow}`;
+  el('alternate-retry-button').innerHTML=`${runStart===21?'1からはじめる':'21からリスタート'} ${arrow}`;
+}
 updateBest();
 function showScreen(name:'title'|'play'|'result'){
   for(const s of ['title','play','result'])el(`${s}-screen`).hidden=s!==name;
   document.body.dataset.screen=name;
 }
 function title(){state='title';round=null;paused=false;el('pause-panel').hidden=true;showScreen('title');updateBest();el('start-button').focus({preventScroll:true});}
-function begin(){audio.unlock();oldBest=best;cleared=0;bag=[];lastGame=null;paused=false;el('pause-panel').hidden=true;el('share-fallback').hidden=true;showScreen('play');nextRound();}
+function begin(startStage:1|21=1){
+  if(startStage===21&&best<20)return;
+  audio.unlock();oldBest=best;runStart=startStage;cleared=startStage-1;bag=[];lastGame=null;paused=false;
+  el('pause-panel').hidden=true;el('share-fallback').hidden=true;showScreen('play');nextRound();
+}
 function nextRound(){
-  if(!bag.length){bag=shuffle(missions.map(m=>m.id));if(bag[0]===lastGame)[bag[0],bag[1]]=[bag[1],bag[0]];}
+  if(!bag.length){
+    bag=shuffle(missions.map(m=>m.id));if(bag[0]===lastGame)[bag[0],bag[1]]=[bag[1],bag[0]];
+    bag=bag.slice(0,8-cleared%8);
+  }
   const id=bag.shift()!;lastGame=id;
   const m=missions.find(m=>m.id===id)!;
   round=createRound(id,{finish:finishRound,sound:s=>audio.play(s)},cleared+1);
@@ -200,7 +215,9 @@ document.addEventListener('keydown',e=>{
 });
 document.addEventListener('visibilitychange',()=>{if(document.hidden)setPaused(true);});
 window.addEventListener('blur',()=>setPaused(true));
-el('start-button').onclick=begin;el('retry-button').onclick=begin;el('back-button').onclick=title;
+el('start-button').onclick=()=>begin();el('checkpoint-start-button').onclick=()=>begin(21);
+el('retry-button').onclick=()=>begin(runStart);el('alternate-retry-button').onclick=()=>begin(runStart===21?1:21);
+el('back-button').onclick=title;
 el('home-button').onclick=()=>{if(state==='title'||state==='result')title();else setPaused(true);};
 el('pause-button').onclick=()=>setPaused(!paused);el('resume-button').onclick=()=>setPaused(false);
 el('quit-button').onclick=()=>{finalReason='任務から帰還した。';endRun(false);};
