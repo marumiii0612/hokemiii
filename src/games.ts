@@ -233,13 +233,14 @@ class Laser extends Round {
     const w=Math.floor(t/this.period); this.phase=(t%this.period)/this.period;
     if(w!==this.wave){
       this.wave=w;this.groundLaser=w%2===1;
-      this.danger=this.groundLaser?[]:shuffle([0,1,2,3]).slice(0,this.stage>=9?2:1);
-      this.hint=this.groundLaser?'下の横レーザーはジャンプ。中央タップ / ↑・Space':'縦レーザーは左右によける。左右タップ / ← →';
+      const combined=this.groundLaser&&this.stage>=9&&(w%4===3||this.stage>=17);
+      this.danger=!this.groundLaser||combined?shuffle([0,1,2,3]).slice(0,this.stage>=9?2:1):[];
+      this.hint=combined?'縦線をよけながらジャンプ。左右移動＋中央タップ / ↑・Space':this.groundLaser?'下の横レーザーはジャンプ。中央タップ / ↑・Space':'縦レーザーは左右によける。左右タップ / ← →';
       this.api.sound('warning');
     }
     if(this.firing){
-      if(this.groundLaser){if(this.jumpHeight<36)this.end(false,'レーザーに触れた。');}
-      else if(this.danger.some(lane=>this.lanes[lane]>=Math.min(previousX,this.px)-28&&this.lanes[lane]<=Math.max(previousX,this.px)+28))this.end(false,'レーザーに触れた。');
+      const verticalHit=this.danger.some(lane=>this.lanes[lane]>=Math.min(previousX,this.px)-28&&this.lanes[lane]<=Math.max(previousX,this.px)+28);
+      if((this.groundLaser&&this.jumpHeight<36)||verticalHit)this.end(false,'レーザーに触れた。');
     }
   }
   protected timeout(){this.end(true,'セキュリティを突破した。');}
@@ -254,7 +255,7 @@ class Laser extends Round {
       text(c,`0${i+1}`,x,197,15,C.muted);
       if(this.danger.includes(i)){
         const on=this.firing;
-        if(this.phase<.57||on){
+        if(this.phase<(this.groundLaser ? .45 : .57)||on){
           c.save(); c.globalAlpha=on?1:.2+.2*Math.sin(this.elapsed*24);
           rect(c,x-46,226,92,360,'#e5534022');
           c.shadowColor=C.red;c.shadowBlur=on?25:0;line(c,[[x,168],[x,604]],on?'#ffcead':C.red,on?9:2);
@@ -271,7 +272,7 @@ class Laser extends Round {
       if(!on)c.setLineDash([13,10]);
       c.shadowColor=C.red;c.shadowBlur=on?26:0;
       line(c,[[88,526],[632,526]],on?'#ffcead':C.red,on?9:3);c.restore();
-      if(!on)text(c,'↑ ジャンプ',360,296,28,C.gold,'center',600);
+      if(!on)text(c,this.danger.length?'← → ＋ ジャンプ':'↑ ジャンプ',360,296,28,C.gold,'center',600);
     }
     c.beginPath();c.ellipse(this.px,557,32-this.jumpHeight*.1,9-this.jumpHeight*.025,0,0,Math.PI*2);c.fillStyle='#00000070';c.fill();
     person(c,this.px,521-this.jumpHeight,1.25,'#080c11','#161d22',this.jumping?-5:Math.sin(this.elapsed*9)*4);

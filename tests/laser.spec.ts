@@ -86,3 +86,56 @@ test('low lasers require jumps, vertical lasers remain dangerous in the air, and
   });
   expect(result).toEqual({speeds:Array.from({length:3},()=>({survived:true,lowHitsLeft:true,lowHitsRight:true,verticalHitsInAir:true})),fourthColumnHits:true,firstColumnHits:true});
 });
+
+test('combined beams unlock gradually and require both moving and jumping at the same time',async({page})=>{
+  await page.goto('/');
+  const result=await page.evaluate(async()=>{
+    const modulePath='/src/games.ts';
+    const {createRound}=await import(/* @vite-ignore */ modulePath);
+    const original=Math.random;
+    const canvas=document.createElement('canvas');canvas.width=720;canvas.height=640;
+    const c=canvas.getContext('2d')!;
+    const advance=(game:any,seconds:number)=>{
+      for(let remaining=seconds;remaining>1e-8;remaining-=.005)game.tick(Math.min(.005,remaining));
+    };
+    const beams=(game:any,x:number)=>{
+      game.draw(c);
+      return {vertical:c.getImageData(x,300,1,1).data[0]>180,horizontal:c.getImageData(360,526,1,1).data[0]>180};
+    };
+    const run=(stage:number,move:boolean,jump:boolean)=>{
+      Math.random=()=>0;
+      const verdict:boolean[]=[];
+      const speed=Math.min(2.4,1+Math.floor((stage-1)/8)*.2);
+      const game=createRound('laser',{finish:(ok:boolean)=>verdict.push(ok),sound:()=>{}},stage);
+      game.action('left');
+      advance(game,2.35/speed);game.action('jump');
+      advance(game,.85/speed);const early=beams(game,290);
+      advance(game,2.3/speed);
+      // Put the last vertical beams in the player's current column, requiring a move.
+      Math.random=()=>.999;
+      advance(game,.2/speed);
+      if(move){game.action('right');game.action('right');}
+      if(jump)game.action('jump');
+      advance(game,.7/speed);const late=beams(game,150);
+      advance(game,.8/speed);
+      return {early,late,ok:verdict[0]};
+    };
+    try{
+      return {
+        progression:[1,9,17,57].map(stage=>run(stage,true,true)),
+        jumpOnly:[9,17,57].map(stage=>run(stage,false,true).ok),
+        moveOnly:[9,17,57].map(stage=>run(stage,true,false).ok),
+        firstLoopJumpOnly:run(1,false,true).ok,
+      };
+    }finally{Math.random=original;}
+  });
+  expect(result).toEqual({
+    progression:[
+      {early:{vertical:false,horizontal:true},late:{vertical:false,horizontal:true},ok:true},
+      {early:{vertical:false,horizontal:true},late:{vertical:true,horizontal:true},ok:true},
+      {early:{vertical:true,horizontal:true},late:{vertical:true,horizontal:true},ok:true},
+      {early:{vertical:true,horizontal:true},late:{vertical:true,horizontal:true},ok:true},
+    ],
+    jumpOnly:[false,false,false],moveOnly:[false,false,false],firstLoopJumpOnly:true,
+  });
+});
