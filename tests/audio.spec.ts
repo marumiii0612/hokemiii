@@ -35,9 +35,9 @@ async function musicState(page:Page){
   });
 }
 
-test.describe('title BGM and louder effects',()=>{
+test.describe('BGM through a mission and louder effects',()=>{
   test.use({viewport:{width:320,height:844},isMobile:true,hasTouch:true});
-  test('loads on request, uses low BGM volume, stops during play and respects mute and tab visibility',async({page})=>{
+  test('continues during play, stops on failure, resumes on retry and respects mute and pause',async({page})=>{
     const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
     await page.addInitScript(()=>{
       const trace={peaks:[] as number[],starts:0,master:undefined as GainNode|undefined};
@@ -58,7 +58,7 @@ test.describe('title BGM and louder effects',()=>{
     expect(apiRequests).toBe(1);expect(playing.videoId).toBe('MuGFcUggtDs');
     expect(playing.vars.loop).toBe(1);expect(playing.vars.playsinline).toBe(1);
     expect(playing.volumes.every((volume:number)=>volume===8)).toBe(true);
-    await expect(page.locator('#title-bgm-player iframe')).toHaveAttribute('title','タイトルBGM — YouTube');
+    await expect(page.locator('#title-bgm-player iframe')).toHaveAttribute('title','BGM — YouTube');
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     await page.getByRole('button',{name:'音をオフにする',exact:true}).tap();
     expect((await musicState(page)).pauses).toBeGreaterThan(playing.pauses);
@@ -76,17 +76,47 @@ test.describe('title BGM and louder effects',()=>{
     await expect(page.getByRole('button',{name:'音をオンにする',exact:true})).toBeVisible();
     await page.getByRole('button',{name:'BGMを再生',exact:true}).tap();
     await expect(page.getByRole('button',{name:'音をオフにする',exact:true})).toBeVisible();
+    const time=new Date('2026-10-24T12:00:00Z');
+    await page.clock.install({time});await page.clock.pauseAt(new Date(time.getTime()+1000));
+    await page.evaluate(()=>{Object.assign(window,{savedMusicFrame:document.querySelector('#title-bgm-player iframe')});});
     const beforeGame=await musicState(page);
-    await page.getByRole('button',{name:'はじめる',exact:true}).tap();
+    await page.getByRole('button',{name:'はじめる',exact:true}).click();await page.clock.runFor(1300);
     await expect(page.locator('#transition')).toBeHidden();
-    expect((await musicState(page)).pauses).toBeGreaterThan(beforeGame.pauses);
-    expect((await musicState(page)).plays).toBe(beforeGame.plays);
+    const inGame=await musicState(page);
+    expect(inGame.pauses).toBe(beforeGame.pauses);
+    await expect(page.locator('#title-bgm-player iframe')).toBeVisible();
+    expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     await tapCanvas(page,512,135);
     await expect(page.locator('#result-screen h1')).toHaveText('任務失敗。');
+    const failed=await musicState(page);
+    expect(failed.pauses).toBeGreaterThan(inGame.pauses);expect(failed.plays).toBe(inGame.plays);
+    await expect(page.locator('#bgm-section')).toBeHidden();
     const effects=await page.evaluate(()=>{const trace=(window as any).soundTrace;return {peak:Math.max(...trace.peaks),starts:trace.starts};});
     expect(effects.peak).toBeGreaterThan(.2);expect(effects.starts).toBeGreaterThan(0);
-    await page.getByRole('button',{name:'タイトルへ戻る',exact:true}).tap();
-    expect((await musicState(page)).plays).toBeGreaterThan(beforeGame.plays);
+    await page.getByRole('button',{name:'もう一度、潜入する',exact:true}).click();await page.clock.runFor(1300);
+    const retried=await musicState(page);
+    expect(retried.plays).toBeGreaterThan(failed.plays);expect(retried.pauses).toBe(failed.pauses);
+    await expect(page.locator('#title-bgm-player iframe')).toBeVisible();
+    expect(await page.evaluate(()=>document.querySelector('#title-bgm-player iframe')===(window as any).savedMusicFrame)).toBe(true);
+    await page.getByRole('button',{name:'音をオフにする',exact:true}).click();
+    expect((await musicState(page)).pauses).toBeGreaterThan(retried.pauses);
+    await page.getByRole('button',{name:'音をオンにする',exact:true}).click();
+    const unmuted=await musicState(page);
+    expect(unmuted.plays).toBeGreaterThan(retried.plays);
+    await page.getByRole('button',{name:'一時停止',exact:true}).click();
+    expect((await musicState(page)).pauses).toBeGreaterThan(unmuted.pauses);
+    await page.getByRole('button',{name:'つづける',exact:false}).click();
+    const resumed=await musicState(page);
+    expect(resumed.plays).toBeGreaterThan(unmuted.plays);
+    await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>true});document.dispatchEvent(new Event('visibilitychange'));});
+    expect((await musicState(page)).pauses).toBeGreaterThan(resumed.pauses);
+    await page.evaluate(()=>{Object.defineProperty(document,'hidden',{configurable:true,get:()=>false});document.dispatchEvent(new Event('visibilitychange'));});
+    expect((await musicState(page)).plays).toBe(resumed.plays);
+    await page.getByRole('button',{name:'つづける',exact:false}).click();
+    await tapCanvas(page,512,135);
+    const failedAgain=await musicState(page);
+    await page.getByRole('button',{name:'タイトルへ戻る',exact:true}).click();
+    expect((await musicState(page)).plays).toBeGreaterThan(failedAgain.plays);
     expect(errors).toEqual([]);
   });
 
@@ -112,18 +142,74 @@ test.describe('title BGM and louder effects',()=>{
     expect(errors).toEqual([]);
   });
 
-  test('a late player response cannot start BGM during a mission',async({page})=>{
+  test('a late player response starts during a mission but cannot restart music after failure',async({page})=>{
     let release!:()=>void;
     const gate=new Promise<void>(resolve=>{release=resolve;});
     await page.route('https://www.youtube.com/iframe_api',async route=>{
       await gate;await route.fulfill({contentType:'application/javascript',body:fakeApi});
     });
+    await page.addInitScript(()=>{Math.random=()=>0;});
     await page.goto('/');
     await page.getByRole('button',{name:'BGMを再生',exact:true}).tap();
     await page.getByRole('button',{name:'はじめる',exact:true}).tap();
     release();
-    await expect.poll(async()=>page.evaluate(()=>(window as any).musicMock?.pauses??0)).toBeGreaterThan(0);
-    expect((await musicState(page)).plays).toBe(0);
+    await expect.poll(async()=>page.evaluate(()=>(window as any).musicMock?.plays??0)).toBeGreaterThan(0);
+    expect((await musicState(page)).pauses).toBe(0);
     await expect(page.locator('#play-screen')).toBeVisible();
+    await expect(page.locator('#title-bgm-player iframe')).toBeVisible();
+    await expect(page.locator('#transition')).toBeHidden();
+    await tapCanvas(page,512,135);
+    await expect(page.locator('#result-screen')).toBeVisible();
+    const failed=await musicState(page);
+    expect(failed.pauses).toBeGreaterThan(0);
+    await page.evaluate(()=>{(window as any).musicMock.options.events.onStateChange({data:1});});
+    const late=await musicState(page);
+    expect(late.pauses).toBeGreaterThan(failed.pauses);expect(late.plays).toBe(failed.plays);
+  });
+
+  test('clearing a stage keeps BGM playing and checkpoint retries resume it',async({page})=>{
+    await page.addInitScript(()=>localStorage.setItem('sennyu-best-v1','20'));
+    await mockMusic(page);
+    await page.getByRole('button',{name:'BGMを再生',exact:true}).tap();
+    await expect(page.locator('#bgm-status')).toContainText('再生中');
+    const time=new Date('2026-10-24T12:00:00Z');
+    await page.clock.install({time});await page.clock.pauseAt(new Date(time.getTime()+1000));
+    await page.getByRole('button',{name:'21からはじめる',exact:true}).click();await page.clock.runFor(1300);
+    const beforeClear=await musicState(page);
+    await tapCanvas(page,330,336);
+    await expect(page.locator('#transition-title')).toHaveText('任務完了');
+    expect((await musicState(page)).pauses).toBe(beforeClear.pauses);
+    await page.clock.runFor(2400);
+    await expect(page.locator('#stage-number')).toHaveText('22');
+    expect((await musicState(page)).pauses).toBe(beforeClear.pauses);
+    await page.clock.runFor(20000);
+    await expect(page.locator('#result-screen')).toBeVisible();
+    const failed=await musicState(page);
+    expect(failed.pauses).toBeGreaterThan(beforeClear.pauses);
+    await page.getByRole('button',{name:'21からリスタート',exact:true}).click();
+    expect((await musicState(page)).plays).toBeGreaterThan(failed.plays);
+    await expect(page.locator('#stage-number')).toHaveText('21');
+  });
+
+  test('restarts preserve explicit BGM stop and master mute choices',async({page})=>{
+    await mockMusic(page);
+    await page.getByRole('button',{name:'BGMを再生',exact:true}).tap();
+    await expect(page.locator('#bgm-status')).toContainText('再生中');
+    await page.getByRole('button',{name:'BGMを停止',exact:true}).tap();
+    const stopped=await musicState(page);
+    const time=new Date('2026-10-24T12:00:00Z');
+    await page.clock.install({time});await page.clock.pauseAt(new Date(time.getTime()+1000));
+    await page.getByRole('button',{name:'はじめる',exact:true}).click();await page.clock.runFor(1300);
+    await tapCanvas(page,512,135);
+    await page.getByRole('button',{name:'もう一度、潜入する',exact:true}).click();await page.clock.runFor(1300);
+    expect((await musicState(page)).plays).toBe(stopped.plays);
+    await page.getByRole('button',{name:'BGMを再生',exact:true}).click();
+    await page.getByRole('button',{name:'音をオフにする',exact:true}).click();
+    const muted=await musicState(page);
+    await tapCanvas(page,512,135);
+    await page.getByRole('button',{name:'もう一度、潜入する',exact:true}).click();
+    expect((await musicState(page)).plays).toBe(muted.plays);
+    await page.getByRole('button',{name:'音をオンにする',exact:true}).click();
+    expect((await musicState(page)).plays).toBeGreaterThan(muted.plays);
   });
 });

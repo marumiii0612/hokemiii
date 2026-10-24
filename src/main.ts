@@ -29,12 +29,6 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
         <p class="title-description">八つの任務。一度きりの判断。<br>どこまで生き残れるか。</p>
         <div class="title-record"><span>自己最高記録</span><strong id="title-best">00</strong><span>STAGES</span></div>
       </div>
-      <div class="title-bgm-controls"><button id="bgm-button" class="text-button" aria-controls="title-bgm-panel" aria-expanded="false" aria-pressed="false">BGMを再生</button></div>
-      <section id="title-bgm-panel" class="title-bgm-panel" aria-label="タイトルBGM" hidden>
-        <div id="title-bgm-player" class="title-bgm-player"></div>
-        <p id="bgm-status" class="bgm-status" role="status"></p>
-        <a class="bgm-source" href="https://youtu.be/MuGFcUggtDs" target="_blank" rel="noreferrer">この曲をYouTubeで開く ↗</a>
-      </section>
       <div class="title-bottom"><button id="help-button" class="text-button"><span class="help-symbol">?</span> 遊び方を見る</button><span class="title-id">OPERATION No. 008</span></div>
     </main>
 
@@ -70,6 +64,14 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
       <button id="back-button" class="text-button">タイトルへ戻る</button>
     </main>
 
+    <section id="bgm-section" aria-label="BGM">
+      <div class="title-bgm-controls"><button id="bgm-button" class="text-button" aria-controls="title-bgm-panel" aria-expanded="false" aria-pressed="false">BGMを再生</button></div>
+      <div id="title-bgm-panel" class="title-bgm-panel" hidden>
+        <div id="title-bgm-player" class="title-bgm-player"></div>
+        <p id="bgm-status" class="bgm-status" role="status"></p>
+        <a class="bgm-source" href="https://youtu.be/MuGFcUggtDs" target="_blank" rel="noreferrer">この曲をYouTubeで開く ↗</a>
+      </div>
+    </section>
     <footer class="site-footer"><span>FICTIONAL OPERATIONS BUREAU</span><span>EST. 2026 <i>●</i> JP</span></footer>
   </div>
   <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-header"><span class="eyebrow">FIELD MANUAL</span><button id="close-help" class="icon-button" aria-label="遊び方を閉じる">×</button></div><h2 id="help-title">任務の手引き<span>。</span></h2><p class="help-intro">ランダムに続く8つのミニゲーム。<br>制限時間内に成功させ、自己最高記録を目指せ。</p><div class="mission-list">${missions.map(m=>`<div class="manual-mission"><span>${m.icon}</span><div><h3>${m.title}</h3><p>${m.sub}</p></div></div>`).join('')}</div><div class="manual-note"><p>ミスするまでステージは続き、40クリアまでは任務失敗、41クリア以上は殉職。8ステージごとに1周し、2周目は1.2倍、3周目は1.4倍と加速（最大2.4倍）。20クリアで21からの再開を解放。記録はこの端末に保存されます。</p><p>PC：画面クリック・Space・矢印キー・数字1〜4。P / Escで一時停止。スマホ：画面または操作ボタンをタップ。</p></div><details><summary>このゲームについて・地図の出典</summary><p>VIVANTに着想を得た、非公式のオリジナルファンゲームです。作品の画像・俳優の肖像は使用していません。タイトルBGMはYouTubeの埋め込み再生、記憶写真はオリジナルイラストです。</p><p>日本地図：国土地理院「地球地図日本」。dataofjapan/land の地理データを簡略化して使用。一部の島嶼は省略しています。地図データの利用条件は <a href="https://github.com/dataofjapan/land" target="_blank" rel="noreferrer">配布元</a> を参照してください。</p></details></dialog>
@@ -91,7 +93,8 @@ const ctx=canvas.getContext('2d')!;
 function resizeCanvas(){const dpr=Math.min(devicePixelRatio||1,2);canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);}
 resizeCanvas();window.addEventListener('resize',resizeCanvas);
 
-function updateSound(){el('sound-button').setAttribute('aria-pressed',String(audio.enabled));el('sound-button').setAttribute('aria-label',audio.enabled?'音をオフにする':'音をオンにする');el('sound-button').querySelector('span')!.textContent=audio.enabled?'ON':'OFF';titleMusic.setContext(state==='title'&&!document.hidden,audio.enabled);}
+function updateMusic(){titleMusic.setContext(state!=='result'&&!paused&&!document.hidden,audio.enabled);}
+function updateSound(){el('sound-button').setAttribute('aria-pressed',String(audio.enabled));el('sound-button').setAttribute('aria-label',audio.enabled?'音をオフにする':'音をオンにする');el('sound-button').querySelector('span')!.textContent=audio.enabled?'ON':'OFF';updateMusic();}
 updateSound();
 function updateBest(){
   el('title-best').textContent=String(best).padStart(2,'0');el('result-best').textContent=String(best);
@@ -101,15 +104,15 @@ function updateBest(){
 }
 updateBest();
 function showScreen(name:'title'|'play'|'result'){
-  titleMusic.setContext(name==='title'&&!document.hidden,audio.enabled);
   for(const s of ['title','play','result'])el(`${s}-screen`).hidden=s!==name;
+  el('bgm-section').hidden=name==='result';updateMusic();
   document.body.dataset.screen=name;
 }
 function title(){state='title';round=null;paused=false;el('pause-panel').hidden=true;showScreen('title');updateBest();el('start-button').focus({preventScroll:true});}
 function begin(startStage:1|21=1){
   if(startStage===21&&best<20)return;
   audio.unlock();oldBest=best;runStart=startStage;cleared=startStage-1;bag=[];lastGame=null;paused=false;
-  el('pause-panel').hidden=true;el('share-fallback').hidden=true;showScreen('play');nextRound();
+  el('pause-panel').hidden=true;el('share-fallback').hidden=true;nextRound();showScreen('play');
 }
 function nextRound(){
   if(!bag.length){
@@ -167,6 +170,7 @@ function endRun(failed=true){
 function setPaused(value:boolean){
   if(!['playing','briefing','feedback'].includes(state))return;
   paused=value;el('pause-panel').hidden=!value;el('pause-button').setAttribute('aria-label',value?'再開':'一時停止');
+  updateMusic();
   if(value)el('resume-button').focus({preventScroll:true});else canvas.focus({preventScroll:true});
 }
 function dispatch(action:string){if(state==='playing'&&!paused){audio.unlock();round?.action(action);}}
@@ -222,7 +226,7 @@ document.addEventListener('keydown',e=>{
   const action:Record<string,string>={Space:'primary',ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down',Digit1:'choice-0',Digit2:'choice-1',Digit3:'choice-2',Digit4:'choice-3',Numpad1:'choice-0',Numpad2:'choice-1',Numpad3:'choice-2',Numpad4:'choice-3'};
   if(action[e.code]){e.preventDefault();if(!e.repeat)dispatch(action[e.code]);}
 });
-document.addEventListener('visibilitychange',()=>{if(document.hidden)setPaused(true);titleMusic.setContext(state==='title'&&!document.hidden,audio.enabled);});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)setPaused(true);updateMusic();});
 window.addEventListener('blur',()=>setPaused(true));
 el('start-button').onclick=()=>begin();el('checkpoint-start-button').onclick=()=>begin(21);
 el('retry-button').onclick=()=>begin(runStart);el('alternate-retry-button').onclick=()=>begin(runStart===21?1:21);

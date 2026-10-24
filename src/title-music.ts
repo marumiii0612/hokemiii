@@ -76,7 +76,7 @@ export class TitleMusic {
           onReady:({target})=>{
             if(generation!==this.generation)return;
             this.player=target;this.ready=true;this.loading=false;window.clearTimeout(this.timer);
-            const frame=target.getIframe();frame.title='タイトルBGM — YouTube';
+            const frame=target.getIframe();frame.title='BGM — YouTube';
             frame.allow='autoplay; encrypted-media; picture-in-picture';frame.referrerPolicy='strict-origin-when-cross-origin';
             this.status.textContent='小さめの音量で再生します。';this.sync();
           },
@@ -87,7 +87,7 @@ export class TitleMusic {
             }
             if(data!==1)return;
             if(!this.active||!this.enabled||!this.requested){this.player?.pauseVideo();return;}
-            this.blocked=false;this.status.textContent='タイトル画面で小さく再生中';this.render();
+            this.blocked=false;this.status.textContent='BGMを小さく再生中';this.render();
           },
           onAutoplayBlocked:()=>{
             if(generation!==this.generation)return;
