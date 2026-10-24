@@ -121,10 +121,10 @@ test('pause preserves time and best record survives reload',async({page})=>{
   await page.reload();await expect(page.locator('#title-best')).toHaveText('01');
 });
 
-for(const cleared of [30,31]){
-  test(`mission result at ${cleared} clears, with play continuing past the success threshold`,async({page})=>{
+for(const cleared of [40,41]){
+  test(`mission result at ${cleared} clears, with play continuing until a mistake`,async({page})=>{
     await deterministic(page);
-    // Stub only round outcomes so this checks the controller across 31 stages;
+    // Stub only round outcomes so this checks the controller across 41 stages;
     // the real mission rules are exercised separately below.
     await page.evaluate(async()=>{
       const modulePath='/src/games.ts';
@@ -151,13 +151,12 @@ for(const cleared of [30,31]){
     await page.clock.runFor(1300);
     await finish(false);
     await expect(page.locator('#final-score')).toHaveText(String(cleared));
-    await expect(page.locator('#result-screen h1')).toHaveText(cleared>=31?'任務成功。':'任務失敗。');
-    if(cleared>=31){
-      await expect(page.locator('#result-screen .eyebrow')).toHaveText('OPERATION SUCCESS');
-      await expect(page.locator('#result-rank')).toBeHidden();
-    }else{
-      await expect(page.locator('#result-rank')).toHaveText('あなたはBEPPANです');
-    }
+    await expect(page.locator('#result-screen h1')).toHaveText(cleared>=41?'殉職。':'任務失敗。');
+    await expect(page.locator('#result-screen .eyebrow')).toHaveText(cleared>=41?'KILLED IN ACTION':'OPERATION FAILED');
+    await expect(page.locator('#result-rank')).toHaveText('あなたはBEPPANです');
+    await expect(page.locator('#result-rank')).toBeVisible();
+    await expect(page.locator('#result-message')).toBeEmpty();
+    await expect(page.locator('#result-message')).toBeHidden();
     await page.getByRole('button',{name:'もう一度、潜入する'}).click();
     await expect(page.locator('#stage-number')).toHaveText('01');
     await expect(page.locator('#result-screen')).toBeHidden();
@@ -165,7 +164,8 @@ for(const cleared of [30,31]){
     await page.getByRole('button',{name:'一時停止',exact:true}).click();
     await page.getByRole('button',{name:'任務を終了する',exact:true}).click();
     await expect(page.locator('#result-screen h1')).toHaveText('任務終了。');
-    await expect(page.locator('#result-screen')).not.toHaveClass(/mission-success/);
+    await expect(page.locator('#result-rank')).toBeHidden();
+    await expect(page.locator('#result-message')).toHaveText('任務から帰還した。');
   });
 }
 

@@ -91,8 +91,6 @@ dialog{background:#192018;color:var(--paper);border:1px solid #5c6346;width:580p
   letter-spacing: .12em;
   color: var(--gold);
 }
-.mission-success .result-symbol,
-.mission-success h1 span { color: var(--gold); }
 .controls.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 @media (max-width: 640px) {
   .title-content { padding: 58px 0 50px; }
