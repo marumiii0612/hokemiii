@@ -131,7 +131,9 @@ function nextRound(){
   el('cleared-label').textContent=`${cleared} STAGES CLEARED`;
   el('transition').className='transition briefing';el('transition').hidden=false;
   el('pursuer').hidden=true;
-  el('transition-label').textContent=`STAGE ${String(cleared+1).padStart(2,'0')}`;el('transition-title').textContent=`${m.title}。`;el('transition-message').textContent=m.sub;
+  el('transition-label').textContent='';
+  el('transition-title').textContent=`${m.title}。`;
+  el('transition-message').textContent='';
   el('controls').replaceChildren();el('controls').hidden=true;
   el('game-hint').textContent=m.sub;
   el('time-value').innerHTML=`${round.duration.toFixed(1)}<span>s</span>`;

@@ -221,3 +221,6 @@ body[data-screen="play"] .game-bottom { margin: 0; font-size: 7px; }
   .pause-panel .primary-button { min-height: 44px; padding: 8px; }
   .pause-panel > .text-button { min-height: 44px; margin: 0; }
 }
+
+.briefing > :not(#transition-title) { display: none; }
+.briefing > #transition-title { margin: 0; }
