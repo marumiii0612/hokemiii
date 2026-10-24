@@ -13,7 +13,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
   <div class="site-frame">
     <header class="site-header">
       <button class="brand" id="home-button" aria-label="タイトルへ">${mark}<span>HOKEMI<span class="brand-en">FIELD TEST</span></span></button>
-      <div class="header-right"><span class="classified">極秘<span> / CLASSIFIED</span></span><button id="sound-button" class="icon-button sound-button" aria-label="音をオフにする" aria-pressed="true">${soundIcon}<span>ON</span></button></div>
+      <div class="header-right"><span class="classified">極秘<span> / CLASSIFIED</span></span><button id="bgm-button" class="icon-button music-button" aria-label="BGMを再生" title="BGMを再生" aria-pressed="false"><span aria-hidden="true">♪</span></button><button id="sound-button" class="icon-button sound-button" aria-label="音をオフにする" aria-pressed="true">${soundIcon}<span>ON</span></button></div>
     </header>
 
     <main id="title-screen" class="title-screen">
@@ -65,15 +65,14 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
     </main>
 
     <section id="bgm-section" aria-label="BGM">
-      <div class="title-bgm-controls"><button id="bgm-button" class="text-button" aria-controls="title-bgm-panel" aria-expanded="false" aria-pressed="false">BGMを再生</button></div>
       <div id="title-bgm-panel" class="title-bgm-panel" hidden>
-        <div id="title-bgm-player" class="title-bgm-player"></div>
         <p id="bgm-status" class="bgm-status" role="status"></p>
         <a class="bgm-source" href="https://youtu.be/MuGFcUggtDs" target="_blank" rel="noreferrer">この曲をYouTubeで開く ↗</a>
       </div>
     </section>
     <footer class="site-footer"><span>FICTIONAL OPERATIONS BUREAU</span><span>EST. 2026 <i>●</i> JP</span></footer>
   </div>
+  <div id="title-bgm-player" class="bgm-audio-player" aria-hidden="true" inert></div>
   <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-header"><span class="eyebrow">FIELD MANUAL</span><button id="close-help" class="icon-button" aria-label="遊び方を閉じる">×</button></div><h2 id="help-title">任務の手引き<span>。</span></h2><p class="help-intro">ランダムに続く8つのミニゲーム。<br>制限時間内に成功させ、自己最高記録を目指せ。</p><div class="mission-list">${missions.map(m=>`<div class="manual-mission"><span>${m.icon}</span><div><h3>${m.title}</h3><p>${m.sub}</p></div></div>`).join('')}</div><div class="manual-note"><p>ミスするまでステージは続き、40クリアまでは任務失敗、41クリア以上は殉職。8ステージごとに1周し、2周目は1.2倍、3周目は1.4倍と加速（最大2.4倍）。20クリアで21からの再開を解放。記録はこの端末に保存されます。</p><p>PC：画面クリック・Space・矢印キー・数字1〜4。P / Escで一時停止。スマホ：画面または操作ボタンをタップ。</p></div><details><summary>このゲームについて・地図の出典</summary><p>VIVANTに着想を得た、非公式のオリジナルファンゲームです。作品の画像・俳優の肖像は使用していません。タイトルBGMはYouTubeの埋め込み再生、記憶写真はオリジナルイラストです。</p><p>日本地図：国土地理院「地球地図日本」。dataofjapan/land の地理データを簡略化して使用。一部の島嶼は省略しています。地図データの利用条件は <a href="https://github.com/dataofjapan/land" target="_blank" rel="noreferrer">配布元</a> を参照してください。</p></details></dialog>
   <div id="toast" class="toast" role="status" hidden></div>
 `;
@@ -105,7 +104,7 @@ function updateBest(){
 updateBest();
 function showScreen(name:'title'|'play'|'result'){
   for(const s of ['title','play','result'])el(`${s}-screen`).hidden=s!==name;
-  el('bgm-section').hidden=name==='result';updateMusic();
+  el('bgm-section').hidden=name!=='title';updateMusic();
   document.body.dataset.screen=name;
   window.scrollTo({top:0,left:0,behavior:'instant'});
 }

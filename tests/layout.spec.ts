@@ -47,7 +47,7 @@ for(const size of sizes){
       const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
       await page.addInitScript(()=>{
         Math.random=()=>0;
-        // Keep a visible player without depending on YouTube's network availability.
+        // Check the BGM lifecycle without depending on YouTube's network availability.
         (window as any).YT={Player:class{
           frame:HTMLIFrameElement;
           constructor(element:HTMLElement,private options:any){
@@ -80,6 +80,10 @@ for(const size of sizes){
       await page.evaluate(()=>window.scrollTo(0,1000));
       await page.getByRole('button',{name:'はじめる',exact:true}).click();
       const initial=await visibleControls(page);
+      if(size.width<size.height){
+        const screenWidth=await page.locator('#play-screen').evaluate(screen=>screen.clientWidth);
+        expect(initial.canvas.width).toBeGreaterThanOrEqual(screenWidth-3);
+      }
       for(let stage=1;stage<=8;stage++){
         await expect(page.locator('#stage-number')).toHaveText(String(stage).padStart(2,'0'));
         await page.clock.runFor(1300);
@@ -93,12 +97,16 @@ for(const size of sizes){
         const current=await visibleControls(page);
         expect(current.canvas).toEqual(initial.canvas);expect(current.controls).toEqual(initial.controls);
         if(size.music){
-          const frame=(await page.locator('#title-bgm-player iframe').boundingBox())!;
-          expect(frame.width).toBeGreaterThanOrEqual(200);expect(frame.height).toBeGreaterThanOrEqual(200);
-          expect(frame.x).toBeGreaterThanOrEqual(0);expect(frame.y).toBeGreaterThanOrEqual(0);
-          expect(frame.x+frame.width).toBeLessThanOrEqual(size.width);expect(frame.y+frame.height).toBeLessThanOrEqual(size.height);
+          await expect(page.locator('#title-bgm-player iframe')).toBeHidden();
+          await expect(page.locator('#bgm-section')).toBeHidden();
         }
         if(stage===1){
+          await page.locator('#bgm-button').click();await page.clock.runFor(50);
+          const toggled=await visibleControls(page);
+          expect(toggled.canvas).toEqual(initial.canvas);expect(toggled.controls).toEqual(initial.controls);
+          await page.locator('#bgm-button').click();await page.clock.runFor(50);
+          const restored=await visibleControls(page);
+          expect(restored.canvas).toEqual(initial.canvas);expect(restored.controls).toEqual(initial.controls);
           await page.mouse.wheel(0,500);await page.clock.runFor(100);
           const afterScroll=await visibleControls(page);
           expect(afterScroll.canvas).toEqual(initial.canvas);expect(afterScroll.controls).toEqual(initial.controls);

@@ -39,9 +39,9 @@ export class TitleMusic {
   }
   setContext(active:boolean,enabled:boolean){this.active=active;this.enabled=enabled;this.sync();}
   private render(){
-    this.button.textContent=this.requested&&!this.blocked?'BGMを停止':'BGMを再生';
+    const action=this.requested&&!this.blocked?'BGMを停止':'BGMを再生';
+    this.button.setAttribute('aria-label',action);this.button.title=action;
     this.button.setAttribute('aria-pressed',String(this.requested));
-    this.button.setAttribute('aria-expanded',String(!this.panel.hidden));
   }
   private sync(){
     this.render();

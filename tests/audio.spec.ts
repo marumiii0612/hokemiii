@@ -59,6 +59,7 @@ test.describe('BGM through a mission and louder effects',()=>{
     expect(playing.vars.loop).toBe(1);expect(playing.vars.playsinline).toBe(1);
     expect(playing.volumes.every((volume:number)=>volume===8)).toBe(true);
     await expect(page.locator('#title-bgm-player iframe')).toHaveAttribute('title','BGM — YouTube');
+    await expect(page.locator('#title-bgm-player iframe')).toBeHidden();
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     await page.getByRole('button',{name:'音をオフにする',exact:true}).tap();
     expect((await musicState(page)).pauses).toBeGreaterThan(playing.pauses);
@@ -84,7 +85,7 @@ test.describe('BGM through a mission and louder effects',()=>{
     await expect(page.locator('#transition')).toBeHidden();
     const inGame=await musicState(page);
     expect(inGame.pauses).toBe(beforeGame.pauses);
-    await expect(page.locator('#title-bgm-player iframe')).toBeVisible();
+    await expect(page.locator('#title-bgm-player iframe')).toBeHidden();
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     await tapCanvas(page,512,135);
     await expect(page.locator('#result-screen h1')).toHaveText('任務失敗。');
@@ -96,7 +97,7 @@ test.describe('BGM through a mission and louder effects',()=>{
     await page.getByRole('button',{name:'もう一度、潜入する',exact:true}).click();await page.clock.runFor(1300);
     const retried=await musicState(page);
     expect(retried.plays).toBeGreaterThan(failed.plays);expect(retried.pauses).toBe(failed.pauses);
-    await expect(page.locator('#title-bgm-player iframe')).toBeVisible();
+    await expect(page.locator('#title-bgm-player iframe')).toBeHidden();
     expect(await page.evaluate(()=>document.querySelector('#title-bgm-player iframe')===(window as any).savedMusicFrame)).toBe(true);
     await page.getByRole('button',{name:'音をオフにする',exact:true}).click();
     expect((await musicState(page)).pauses).toBeGreaterThan(retried.pauses);
@@ -156,7 +157,7 @@ test.describe('BGM through a mission and louder effects',()=>{
     await expect.poll(async()=>page.evaluate(()=>(window as any).musicMock?.plays??0)).toBeGreaterThan(0);
     expect((await musicState(page)).pauses).toBe(0);
     await expect(page.locator('#play-screen')).toBeVisible();
-    await expect(page.locator('#title-bgm-player iframe')).toBeVisible();
+    await expect(page.locator('#title-bgm-player iframe')).toBeHidden();
     await expect(page.locator('#transition')).toBeHidden();
     await tapCanvas(page,512,135);
     await expect(page.locator('#result-screen')).toBeVisible();
