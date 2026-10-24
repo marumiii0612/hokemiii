@@ -40,13 +40,13 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
       </div>
       <div class="mission-heading"><div><span id="mission-en" class="eyebrow">MISSION 01</span><h2 id="mission-title">刺せ<span>。</span></h2></div><div class="timer-number"><span>TIME LEFT</span><strong id="time-value">6.0<span>s</span></strong></div></div>
       <div class="timer-track"><div id="time-bar"></div></div>
-      <div class="game-window" id="game-window">
+      <div class="game-viewport"><div class="game-window" id="game-window">
         <canvas id="game-canvas" width="720" height="640" tabindex="0" role="img" aria-label="ミニゲームの画面。操作説明と下のボタンでも操作できます。"></canvas>
         <div id="transition" class="transition" hidden><span id="transition-label" class="eyebrow"></span><div id="pursuer" class="pursuer" hidden><svg viewBox="0 0 100 110" aria-hidden="true"><path d="M18 110v-24q0-26 32-26t32 26v24" fill="#0b1511" stroke="#789075"/><path d="m35 65 15 25 15-25M50 90v20" fill="none" stroke="#92a181"/><ellipse cx="50" cy="34" rx="19" ry="23" fill="#7b8c70"/><path d="M31 31q-3-29 19-28 23 0 19 28l-10-15-15 5Z" fill="#0b1511"/><path d="M56 40h21V27M76 27h5v25h-7" fill="none" stroke="#b4bda0" stroke-width="3"/><path d="M38 35h6m12 0h6" stroke="#18251b" stroke-width="2"/></svg><span>追跡者 / 無線</span></div><strong id="transition-title"></strong><p id="transition-message"></p><div class="transition-mark">${mark}</div></div>
         <div id="pause-panel" class="pause-panel" role="dialog" aria-modal="true" aria-label="一時停止" hidden><span class="eyebrow">OPERATION SUSPENDED</span><h2>一時停止</h2><p>焦らず、次の一手を。</p><button id="resume-button" class="primary-button">つづける ${arrow}</button><button id="quit-button" class="text-button">任務を終了する</button></div>
-      </div>
+      </div></div>
       <p id="game-hint" class="game-hint" aria-live="polite"></p>
-      <div id="controls" class="controls"></div>
+      <div class="controls-slot"><div id="controls" class="controls"></div></div>
       <div class="game-bottom"><span id="cleared-label">0 STAGES CLEARED</span><span>判断は、一瞬。</span></div>
     </main>
 
@@ -107,6 +107,7 @@ function showScreen(name:'title'|'play'|'result'){
   for(const s of ['title','play','result'])el(`${s}-screen`).hidden=s!==name;
   el('bgm-section').hidden=name==='result';updateMusic();
   document.body.dataset.screen=name;
+  window.scrollTo({top:0,left:0,behavior:'instant'});
 }
 function title(){state='title';round=null;paused=false;el('pause-panel').hidden=true;showScreen('title');updateBest();el('start-button').focus({preventScroll:true});}
 function begin(startStage:1|21=1){
