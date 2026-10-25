@@ -4,28 +4,19 @@ const names=['ayaman.mp3','beppan.mp3','karaoketeppan.mp3','pazyama.mp3','pazyam
 
 async function startFiles(page:Page,bgm=true){
   await page.addInitScript(()=>{
-    Math.random=()=>0;localStorage.setItem('sennyu-best-v1','10');
+    let sample=0;
+    // Put Files first in the nine-mission shuffle.
+    Math.random=()=>{sample++;return sample>=2&&sample<=8?.999:0;};
+    localStorage.setItem('sennyu-best-v1','10');
     const play=HTMLMediaElement.prototype.play;
     Object.assign(window,{filePlayCalls:[] as string[]});
     HTMLMediaElement.prototype.play=function(){(window as any).filePlayCalls.push(this.id);return play.call(this);};
   });
   await page.goto('/');
-  await page.evaluate(async()=>{
-    const modulePath='/src/games.ts', {Round}=await import(/* @vite-ignore */ modulePath),tick=Round.prototype.tick;
-    // Only skip earlier outcomes; stage 15 uses its real rules, UI, timer and audio.
-    Round.prototype.tick=function(dt:number){
-      if(this.stage<15)Object.assign(window,{finishFilesLeadIn:()=>this.end(true,'')});
-      else tick.call(this,dt);
-    };
-  });
   if(bgm){await page.getByRole('button',{name:'BGMを再生',exact:true}).click();await expect(page.locator('#bgm-status')).toContainText('再生中');}
   const time=new Date('2026-10-25T15:00:00Z');await page.clock.install({time});await page.clock.pauseAt(new Date(time.getTime()+1000));
-  await page.getByRole('button',{name:'11からはじめる',exact:true}).click();
-  for(let stage=11;stage<15;stage++){
-    await expect(page.locator('#stage-number')).toHaveText(String(stage));await page.clock.runFor(1300);
-    await page.evaluate(()=>(window as any).finishFilesLeadIn());await page.clock.runFor(1500);
-  }
-  await expect(page.locator('#stage-number')).toHaveText('15');await expect(page.locator('#transition-title')).toHaveText('鳴らせ。');
+  await page.getByRole('button',{name:'はじめる',exact:true}).click();
+  await expect(page.locator('#stage-number')).toHaveText('01');await expect(page.locator('#transition-title')).toHaveText('鳴らせ。');
   await page.clock.runFor(1300);await expect(page.locator('#transition')).toBeHidden();await expect(page.locator('#file-picker')).toBeVisible();
 }
 async function audioState(page:Page){
@@ -54,7 +45,7 @@ test.describe('鳴らせ file picker and uploaded music',()=>{
     const after=await audioState(page);expect(after.main).toBe(false);expect(after.plays).toEqual(before.plays);
     expect(Object.values(after.tracks).every(track=>track.paused)).toBe(true);
     expect(await page.locator('#game-canvas').boundingBox()).toEqual(canvas);
-    await page.clock.runFor(1500);await expect(page.locator('#stage-number')).toHaveText('16');
+    await page.clock.runFor(1500);await expect(page.locator('#stage-number')).toHaveText('02');
     await expect(page.locator('#file-picker')).toBeHidden();expect((await audioState(page)).main).toBe(false);expect(errors).toEqual([]);
   });
 
@@ -67,7 +58,7 @@ test.describe('鳴らせ file picker and uploaded music',()=>{
     test(`${scenario.name} fails, plays ${scenario.track} through the result, and stops on navigation`,async({page})=>{
       const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));await startFiles(page,scenario.bgm);
       await page.getByRole('button',{name:scenario.name,exact:true}).tap();await expect(page.locator('#result-screen h1')).toHaveText('任務失敗。');
-      await expect(page.locator('#final-score')).toHaveText('14');await expect(page.locator('#result-message')).toBeEmpty();
+      await expect(page.locator('#final-score')).toHaveText('0');await expect(page.locator('#result-message')).toBeEmpty();
       const track=page.locator(`#file-${scenario.track}-audio`);
       await expect.poll(()=>track.evaluate((audio:HTMLAudioElement)=>audio.readyState>=2&&!audio.paused)).toBe(true);
       const failed=await audioState(page);expect(failed.main).toBe(true);expect(failed.tracks[scenario.track].loop).toBe(true);
@@ -106,23 +97,33 @@ test('every filename has exactly its requested outcome and music, with no repeat
   ]})));
 });
 
-test('only multiples of 15 get the special mission while normal bags continue without dropping games',async({page})=>{
+test('all nine missions appear once per shuffled loop, with speed changing after nine clears',async({page})=>{
   test.setTimeout(90_000);
-  await page.addInitScript(()=>{Math.random=()=>0;});await page.goto('/');
+  await page.addInitScript(()=>{
+    let seed=12345;Math.random=()=>{seed=(seed*1664525+1013904223)>>>0;return seed/4294967296;};
+  });
+  await page.goto('/');
   await page.evaluate(async()=>{
     const modulePath='/src/games.ts';const {Round}=await import(/* @vite-ignore */ modulePath);
     Round.prototype.tick=function(){Object.assign(window,{finishScheduleRound:()=>this.end(true,'')});};
   });
   const time=new Date('2026-10-25T15:00:00Z');await page.clock.install({time});await page.clock.pauseAt(new Date(time.getTime()+1000));
-  await page.getByRole('button',{name:'はじめる',exact:true}).click();const normal:string[]=[];
-  for(let stage=1;stage<=60;stage++){
+  await page.getByRole('button',{name:'はじめる',exact:true}).click();const titles:string[]=[],fileStages:number[]=[];
+  for(let stage=1;stage<=27;stage++){
     await expect(page.locator('#stage-number')).toHaveText(String(stage).padStart(2,'0'));
-    const title=await page.locator('#mission-title').textContent();
-    if(stage%15===0)expect(title).toBe('鳴らせ。');else{expect(title).not.toBe('鳴らせ。');normal.push(title!);}
+    const title=(await page.locator('#mission-title').textContent())!;titles.push(title);
+    if(title==='鳴らせ。')fileStages.push(stage);
+    if(stage>1)expect(title).not.toBe(titles[stage-2]);
+    await expect(page.locator('#loop-label')).toHaveText(`LOOP 0${Math.floor((stage-1)/9)+1}`);
+    await expect(page.locator('#speed-label')).toHaveText(`SPEED ×${(1+Math.floor((stage-1)/9)*.2).toFixed(2)}`);
     await page.clock.runFor(1300);await page.evaluate(()=>(window as any).finishScheduleRound());await page.clock.runFor(1500);
   }
-  for(let i=0;i+8<=normal.length;i+=8)expect(new Set(normal.slice(i,i+8)).size).toBe(8);
-  await expect(page.locator('#stage-number')).toHaveText('61');
+  for(let i=0;i<titles.length;i+=9){
+    const loop=titles.slice(i,i+9);expect(new Set(loop).size).toBe(9);expect(loop.filter(title=>title==='鳴らせ。')).toHaveLength(1);
+  }
+  expect(fileStages.some(stage=>stage%15!==0)).toBe(true);
+  await expect(page.locator('#stage-number')).toHaveText('28');
+  await expect(page.locator('#speed-label')).toHaveText('SPEED ×1.60');
 });
 
 test('Japan anomalies accept near-coast taps outside the previous radius and still reject distant taps',async({page})=>{

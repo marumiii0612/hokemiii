@@ -40,7 +40,7 @@ test('memory failure does not reveal the correct answer and supports immediate r
   await page.evaluate(()=>{
     let sample=0;
     // Put memory first in the shuffle, then use the red-floor photo.
-    Math.random=()=>{sample++;return sample>=4&&sample<=7?.999:0;};
+    Math.random=()=>{sample++;return sample>=5&&sample<=8?.999:0;};
   });
   await page.clock.install();
   await page.getByRole('button',{name:'はじめる',exact:true}).click();
@@ -72,8 +72,8 @@ for(const scenario of [
       let sample=0;
       Math.random=()=>{
         sample++;
-        if(sample<=7)return 0;
-        if(sample===8)return mapSample;
+        if(sample<=8)return 0;
+        if(sample===9)return mapSample;
         return 0;
       };
     },scenario);
@@ -169,7 +169,7 @@ for(const cleared of [40,41]){
   });
 }
 
-test('complete eight real missions, then accelerate the second loop',async({page})=>{
+test('complete nine real missions, then accelerate the second loop',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
   await deterministic(page);await page.clock.install();
   await page.getByRole('button',{name:'はじめる',exact:true}).click();
@@ -219,7 +219,14 @@ test('complete eight real missions, then accelerate the second loop',async({page
   await expect(page.locator('#mission-title')).toHaveText('食べろ。');
   for(let i=0;i<10;i++)await page.keyboard.press('Space');
   await page.clock.runFor(2400);
+  await expect(page.locator('#mission-title')).toHaveText('鳴らせ。');
+  await expect(page.locator('#loop-label')).toHaveText('LOOP 01');
+  await expect(page.locator('#speed-label')).toHaveText('SPEED ×1.00');
+  await page.getByRole('button',{name:'beppan.mp3',exact:true}).click();
+  await page.clock.runFor(2400);
   await expect(page.locator('#mission-title')).toHaveText('刺せ。');
+  await expect(page.locator('#stage-number')).toHaveText('09');
+  await expect(page.locator('#speed-label')).toHaveText('SPEED ×1.00');
   // The faster banana crosses the knife's flight path after about 1.69 s.
   // Subtract elapsed time already spent in this round and release ~0.34 s early.
   const remaining=Number((await page.locator('#time-value').textContent())!.replace('s',''));
@@ -227,7 +234,7 @@ test('complete eight real missions, then accelerate the second loop',async({page
   await page.keyboard.press('Space');await page.clock.runFor(600);
   await expect(page.locator('#transition-title')).toHaveText('任務完了');
   await page.clock.runFor(2000);
-  await expect(page.locator('#stage-number')).toHaveText('09');
+  await expect(page.locator('#stage-number')).toHaveText('10');
   await expect(page.locator('#loop-label')).toHaveText('LOOP 02');
   await expect(page.locator('#speed-label')).toHaveText('SPEED ×1.20');
   expect(errors).toEqual([]);
@@ -246,7 +253,7 @@ test('each mission has functional success, failure and escalating speed',async({
         const game=createRound(id,{finish:(ok:boolean,message:string)=>verdict.push({ok,message}),sound:()=>{}},stage);
         return{game,verdict};
       };
-      results.knife=[{stage:1,tap:1.35},{stage:9,tap:1.08},{stage:17,tap:.87},{stage:25,tap:.73},{stage:57,tap:.37}].map(({stage,tap})=>{
+      results.knife=[{stage:1,tap:1.35},{stage:10,tap:1.08},{stage:19,tap:.87},{stage:28,tap:.73},{stage:64,tap:.37}].map(({stage,tap})=>{
         const knife=run('knife',stage);
         for(let i=0;i<Math.round(tap*100);i++)knife.game.tick(.01);
         knife.game.action('primary');for(let i=0;i<60;i++)knife.game.tick(.01);
@@ -268,7 +275,7 @@ test('each mission has functional success, failure and escalating speed',async({
       results.knockAllowsNine=maxKnock.verdict.length===0;maxKnock.game.action('primary');results.knockRejectsTen=maxKnock.verdict[0]?.ok===false;
       Math.random=()=>0;
       const memory=run('memory');memory.game.action('choice-0');results.memoryHidden=memory.verdict.length===0;for(let i=0;i<310;i++)memory.game.tick(.01);memory.game.action('choice-0');results.memory=memory.verdict[0]?.ok===false; // shuffled first choice is gray, not red
-      results.speeds=[1,9,17,25].map(stage=>Number(run('eat',stage).game.duration.toFixed(3)));
+      results.speeds=[1,10,19,28].map(stage=>Number(run('eat',stage).game.duration.toFixed(3)));
       // Every Japanese geographic anomaly can be recognized and selected.
       results.maps=[];
       for(let mode=0;mode<4;mode++){

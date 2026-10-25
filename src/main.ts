@@ -3,7 +3,7 @@ import { Audio } from './audio';
 import { TitleMusic } from './title-music';
 import {FileMusicPlayer} from './file-music';
 import {musicFiles} from './music-files';
-import { createRound, missions, type GameId, type Round } from './games';
+import { createRound, missions, MISSIONS_PER_LOOP, type GameId, type Round } from './games';
 import { C, W, H, rect, shuffle } from './draw';
 import { getRank } from './rank';
 
@@ -82,7 +82,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
   <audio id="file-party-audio" src="./audio/party.mp3" preload="none" loop hidden></audio>
   <audio id="file-yes-audio" src="./audio/yes.mp3" preload="none" loop hidden></audio>
   <audio id="file-poi-audio" src="./audio/poi.mp3" preload="none" loop hidden></audio>
-  <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-header"><span class="eyebrow">FIELD MANUAL</span><button id="close-help" class="icon-button" aria-label="遊び方を閉じる">×</button></div><h2 id="help-title">任務の手引き<span>。</span></h2><p class="help-intro">8種類のランダム任務と、15の倍数に現れる特別任務。<br>制限時間内に成功させ、自己最高記録を目指せ。</p><div class="mission-list">${missions.map(m=>`<div class="manual-mission"><span>${m.icon}</span><div><h3>${m.title}</h3><p>${m.sub}</p></div></div>`).join('')}</div><div class="manual-note"><p>ミスするまでステージは続き、40クリアまでは任務失敗、41クリア以上は殉職。8ステージごとに1周し、2周目は1.2倍、3周目は1.4倍と加速（最大2.4倍）。10クリアで11からの再開を解放。記録はこの端末に保存されます。</p><p>PC：画面クリック・Space・矢印キー・数字1〜4。P / Escで一時停止。スマホ：画面または操作ボタンをタップ。</p></div><details><summary>このゲームについて・地図の出典</summary><p>VIVANTに着想を得た、非公式のオリジナルファンゲームです。作品の画像・俳優の肖像は使用していません。BGMは提供された音声ファイル、記憶写真はオリジナルイラストです。</p><p>日本地図：国土地理院「地球地図日本」。dataofjapan/land の地理データを簡略化して使用。一部の島嶼は省略しています。地図データの利用条件は <a href="https://github.com/dataofjapan/land" target="_blank" rel="noreferrer">配布元</a> を参照してください。</p></details></dialog>
+  <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-header"><span class="eyebrow">FIELD MANUAL</span><button id="close-help" class="icon-button" aria-label="遊び方を閉じる">×</button></div><h2 id="help-title">任務の手引き<span>。</span></h2><p class="help-intro">ランダムに続く9種類のミニゲーム。<br>制限時間内に成功させ、自己最高記録を目指せ。</p><div class="mission-list">${missions.map(m=>`<div class="manual-mission"><span>${m.icon}</span><div><h3>${m.title}</h3><p>${m.sub}</p></div></div>`).join('')}</div><div class="manual-note"><p>ミスするまでステージは続き、40クリアまでは任務失敗、41クリア以上は殉職。9ステージごとに1周し、2周目は1.2倍、3周目は1.4倍と加速（最大2.4倍）。10クリアで11からの再開を解放。記録はこの端末に保存されます。</p><p>PC：画面クリック・Space・矢印キー・数字1〜4。P / Escで一時停止。スマホ：画面または操作ボタンをタップ。</p></div><details><summary>このゲームについて・地図の出典</summary><p>VIVANTに着想を得た、非公式のオリジナルファンゲームです。作品の画像・俳優の肖像は使用していません。BGMは提供された音声ファイル、記憶写真はオリジナルイラストです。</p><p>日本地図：国土地理院「地球地図日本」。dataofjapan/land の地理データを簡略化して使用。一部の島嶼は省略しています。地図データの利用条件は <a href="https://github.com/dataofjapan/land" target="_blank" rel="noreferrer">配布元</a> を参照してください。</p></details></dialog>
   <div id="toast" class="toast" role="status" hidden></div>
 `;
 
@@ -128,13 +128,11 @@ function begin(startStage:1|11=1){
   el('pause-panel').hidden=true;el('share-fallback').hidden=true;nextRound();showScreen('play');
 }
 function nextRound(){
-  const special=(cleared+1)%15===0;
-  if(!special&&!bag.length){
-    bag=shuffle(missions.filter(m=>m.id!=='files').map(m=>m.id));if(bag[0]===lastGame)[bag[0],bag[1]]=[bag[1],bag[0]];
-    const normalCleared=cleared-Math.floor(cleared/15);
-    bag=bag.slice(0,8-normalCleared%8);
+  if(!bag.length){
+    bag=shuffle(missions.map(m=>m.id));if(bag[0]===lastGame)[bag[0],bag[1]]=[bag[1],bag[0]];
+    bag=bag.slice(0,MISSIONS_PER_LOOP-cleared%MISSIONS_PER_LOOP);
   }
-  const id=special?'files':bag.shift()!;lastGame=id;
+  const id=bag.shift()!;lastGame=id;
   const m=missions.find(m=>m.id===id)!;
   round=createRound(id,{finish:finishRound,sound:s=>audio.play(s),music:track=>fileMusic.play(track)},cleared+1);
   el('file-picker').hidden=id!=='files';el('file-picker').inert=true;
@@ -149,8 +147,8 @@ function nextRound(){
   el('stage-number').textContent=String(cleared+1).padStart(2,'0');
   el('mission-en').textContent=`MISSION ${String(missions.indexOf(m)+1).padStart(2,'0')} / ${['PRECISION','OBSERVATION','CONTACT','EVASION','CONTROL','MEMORY','ESCAPE','REFUEL','PLAYBACK'][missions.indexOf(m)]}`;
   el('mission-title').innerHTML=`${m.title}<span>。</span>`;
-  el('speed-label').textContent=`SPEED ×${Math.min(2.4,1+Math.floor(cleared/8)*.2).toFixed(2)}`;
-  el('loop-label').textContent=`LOOP ${String(Math.floor(cleared/8)+1).padStart(2,'0')}`;
+  el('speed-label').textContent=`SPEED ×${Math.min(2.4,1+Math.floor(cleared/MISSIONS_PER_LOOP)*.2).toFixed(2)}`;
+  el('loop-label').textContent=`LOOP ${String(Math.floor(cleared/MISSIONS_PER_LOOP)+1).padStart(2,'0')}`;
   el('cleared-label').textContent=`${cleared} STAGES CLEARED`;
   el('transition').className='transition briefing';el('transition').hidden=false;
   el('pursuer').hidden=true;
@@ -179,7 +177,7 @@ function finishRound(ok:boolean,message:string){
     el('game-hint').textContent='認証成功。扉が開きます。';
     canvas.setAttribute('aria-label','認証コードの照合に成功し、扉が開きます。');
   }
-  if(round?.id==='eat'&&round.stage>8)el('transition').classList.add('rice-clear');
+  if(round?.id==='eat'&&round.stage>MISSIONS_PER_LOOP)el('transition').classList.add('rice-clear');
   el('controls').querySelectorAll('button').forEach(b=>b.disabled=true);
 }
 function endRun(failed=true){

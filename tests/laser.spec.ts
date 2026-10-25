@@ -5,7 +5,7 @@ async function laserFirst(page:Page){
   await page.goto('/');
   await page.evaluate(()=>{
     let sample=0;
-    Math.random=()=>{sample++;return sample===6||sample===7 ? .999 : 0;};
+    Math.random=()=>{sample++;return sample===7||sample===8 ? .999 : 0;};
   });
   const time=new Date('2026-10-24T12:00:00Z');
   await page.clock.install({time});await page.clock.pauseAt(new Date(time.getTime()+1000));
@@ -66,8 +66,8 @@ test('low lasers require jumps, vertical lasers remain dangerous in the air, and
       for(let remaining=seconds;remaining>1e-8;remaining-=.005)game.tick(Math.min(.005,remaining));
     };
     try{
-      const speeds=[1,9,57].map(stage=>{
-        const speed=Math.min(2.4,1+Math.floor((stage-1)/8)*.2);
+      const speeds=[1,10,64].map(stage=>{
+        const speed=Math.min(2.4,1+Math.floor((stage-1)/9)*.2);
         const survive=run(stage);survive.game.action('left');
         advance(survive.game,2.35/speed+1.2);survive.game.action('jump');
         advance(survive.game,.55/speed);survive.game.action('jump'); // A tap in midair must not restart the jump.
@@ -110,7 +110,7 @@ test('combined beams unlock gradually and require both moving and jumping at the
     const run=(stage:number,move:boolean,jump:boolean)=>{
       Math.random=()=>0;
       const verdict:boolean[]=[];
-      const speed=Math.min(2.4,1+Math.floor((stage-1)/8)*.2);
+      const speed=Math.min(2.4,1+Math.floor((stage-1)/9)*.2);
       const game=createRound('laser',{finish:(ok:boolean)=>verdict.push(ok),sound:()=>{}},stage);
       game.action('left');
       advance(game,2.35/speed+1.2);game.action('jump');
@@ -127,9 +127,9 @@ test('combined beams unlock gradually and require both moving and jumping at the
     };
     try{
       return {
-        progression:[1,9,17,57].map(stage=>run(stage,true,true)),
-        jumpOnly:[9,17,57].map(stage=>run(stage,false,true).ok),
-        moveOnly:[9,17,57].map(stage=>run(stage,true,false).ok),
+        progression:[1,10,19,64].map(stage=>run(stage,true,true)),
+        jumpOnly:[10,19,64].map(stage=>run(stage,false,true).ok),
+        moveOnly:[10,19,64].map(stage=>run(stage,true,false).ok),
         firstLoopJumpOnly:run(1,false,true).ok,
       };
     }finally{Math.random=original;}
@@ -154,8 +154,8 @@ test('every loop gives longer warnings, quiet gaps and four short laser bursts',
     const canvas=document.createElement('canvas');canvas.width=720;canvas.height=640;
     const c=canvas.getContext('2d')!;
     try{
-      return [1,9,17,57].map(stage=>{
-        const speed=Math.min(2.4,1+Math.floor((stage-1)/8)*.2);
+      return [1,10,19,64].map(stage=>{
+        const speed=Math.min(2.4,1+Math.floor((stage-1)/9)*.2);
         const warnings:number[]=[];const verdict:boolean[]=[];
         const game=createRound('laser',{finish:(ok:boolean)=>verdict.push(ok),sound:(kind:string)=>{if(kind==='warning')warnings.push(game.elapsed);}},stage);
         const advanceTo=(time:number)=>{

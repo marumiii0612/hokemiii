@@ -6,7 +6,7 @@ async function startKnock(page:Page,checkpoint=false){
     let sample=0;
     // Put Knock first; at the checkpoint use 44444 and a first-reply feint.
     if(checkpoint)localStorage.setItem('sennyu-best-v1','10');
-    Math.random=()=>{sample++;return sample===7?.999:checkpoint&&sample>=8?.25:!checkpoint&&sample>=8&&sample<=12?[0,.25,.5,.75,0][sample-8]:0;};
+    Math.random=()=>{sample++;return sample===8?.999:checkpoint&&sample>=9?.25:!checkpoint&&sample>=9&&sample<=13?[0,.25,.5,.75,0][sample-9]:0;};
     const fillText=CanvasRenderingContext2D.prototype.fillText;
     Object.assign(window,{drawnKnockText:[] as string[]});
     CanvasRenderingContext2D.prototype.fillText=function(value,x,y,maxWidth){
@@ -109,7 +109,7 @@ test.describe('memorize the paper authentication code',()=>{
     await expect(page.locator('#result-message')).toBeEmpty();
     await expect(page.locator('#result-message')).toBeHidden();
     await page.evaluate(()=>{
-      let sample=0;Math.random=()=>++sample===7?.999:0;
+      let sample=0;Math.random=()=>++sample===8?.999:0;
     });
     await page.getByRole('button',{name:'もう一度、潜入する',exact:true}).click();await page.clock.runFor(1300);
     await expect(page.locator('#mission-title')).toHaveText('伝えろ。');
@@ -170,9 +170,9 @@ test('paper phases block early input, preserve the 16-second knock budget and st
     const {createRound}=await import(/* @vite-ignore */ modulePath);
     const random=Math.random;
     try{
-      return [1,9,17,25,57,65].map(stage=>{
+      return [1,10,19,28,64,73].map(stage=>{
         Math.random=()=>.999;
-        const speed=Math.min(2.4,1+Math.floor((stage-1)/8)*.2);
+        const speed=Math.min(2.4,1+Math.floor((stage-1)/9)*.2);
         const verdict:{ok:boolean;message:string}[]=[],sounds:string[]=[];
         const game=createRound('knock',{finish:(ok:boolean,message:string)=>verdict.push({ok,message}),sound:(kind:string)=>sounds.push(kind)},stage);
         const advance=(duration:number)=>{for(let left=duration;left>1e-8;left-=.005)game.tick(Math.min(left,.005));};
@@ -189,7 +189,7 @@ test('paper phases block early input, preserve the 16-second knock budget and st
         c.fillText=(value,x,y)=>{drawn.push(value);fillText(value,x,y);};
         game.draw(c);
         const hidden=imageCalls===0&&!drawn.some(value=>/[0-9０-９]/.test(value));
-        const digit=Math.min(6,2+Math.floor((stage-1)/8))+3;
+        const digit=Math.min(6,2+Math.floor((stage-1)/9))+3;
         for(let turn=0;turn<3;turn++){
           for(let tap=0;tap<digit;tap++)game.action('primary');
           if(turn<2){
@@ -216,13 +216,13 @@ test('feints start in loop two, preserve every digit and remain solvable at maxi
     const {createRound}=await import(/* @vite-ignore */ modulePath);
     const random=Math.random;
     try{
-      return [1,8,9,16,17,65].flatMap(stage=>[.25,.999].flatMap(codeSample=>['none','first','second'].map(feint=>{
+      return [1,9,10,18,19,73].flatMap(stage=>[.25,.999].flatMap(codeSample=>['none','first','second'].map(feint=>{
         let sample=0;
         Math.random=()=>{sample++;return sample<=5?codeSample:sample===6?(feint==='none'?.9:.1):feint==='second'?.9:.1;};
         const verdict:boolean[]=[],sounds:number[]=[];
         const game=createRound('knock',{finish:(ok:boolean)=>verdict.push(ok),sound:()=>sounds.push(game.elapsed)},stage);
-        const speed=Math.min(2.4,1+Math.floor((stage-1)/8)*.2);
-        const digit=Math.min(6,2+Math.floor((stage-1)/8))+Math.floor(codeSample*4);
+        const speed=Math.min(2.4,1+Math.floor((stage-1)/9)*.2);
+        const digit=Math.min(6,2+Math.floor((stage-1)/9))+Math.floor(codeSample*4);
         const advanceUntil=(ready:()=>boolean)=>{for(let step=0;step<2000&&!ready()&&!verdict.length;step++)game.tick(.005);};
         advanceUntil(()=>game.controls()[0]?.label==='ノック');
         const replies:{count:number;gaps:number[]}[]=[];
@@ -246,7 +246,7 @@ test('feints start in loop two, preserve every digit and remain solvable at maxi
     result.replies.forEach((reply:{count:number;gaps:number[]},index:number)=>{
       expect(reply.count).toBe(result.digit);
       const delayed=reply.gaps.filter(gap=>gap>.7);
-      const expected=result.stage>8&&result.feint===(index===0?'first':'second');
+      const expected=result.stage>9&&result.feint===(index===0?'first':'second');
       expect(delayed.length,JSON.stringify(result)).toBe(expected?1:0);
       if(expected)expect(delayed[0]).toBeCloseTo(1.05,1);
     });

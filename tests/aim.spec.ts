@@ -6,7 +6,7 @@ async function movingAimFirst(page:Page){
   await page.goto('/');
   await page.evaluate(()=>{
     let sample=0;
-    Math.random=()=>{sample++;return sample>=5&&sample<=7 ? .999 : 0;};
+    Math.random=()=>{sample++;return sample>=6&&sample<=8 ? .999 : 0;};
   });
   const time=new Date('2026-10-24T12:00:00Z');
   await page.clock.install({time});await page.clock.pauseAt(new Date(time.getTime()+1000));
@@ -81,14 +81,14 @@ test('vertical bullets use moving collisions at all speeds, reject heart shots, 
       for(let left=seconds;left>1e-8;left-=step)game.tick(Math.min(step,left));
     };
     try{
-      return [1,9,57].flatMap(stage=>[0,.25,.49,.51,.75,.999].map(random=>{
+      return [1,10,64].flatMap(stage=>[0,.25,.49,.51,.75,.999].map(random=>{
         Math.random=()=>random;
         const run=()=>{
           const verdict:{ok:boolean;message:string}[]=[];const shots:string[]=[];
           const game=createRound('aim',{finish:(ok:boolean,message:string)=>verdict.push({ok,message}),sound:(kind:string)=>shots.push(kind)},stage);
           return {game,verdict,shots};
         };
-        const speed=Math.min(2.4,1+Math.floor((stage-1)/8)*.2);
+        const speed=Math.min(2.4,1+Math.floor((stage-1)/9)*.2);
         const aim=run(),before=draw(aim.game);
         advance(aim.game,.7/speed);const after=draw(aim.game);
         const bodyDx=after.body.x-before.body.x,bodyDy=after.body.y-before.body.y;

@@ -15,8 +15,9 @@ export const missions: { id: GameId; title: string; sub: string; icon: string }[
   {id:'memory',title:'覚えろ',sub:'短時間だけ表示される写真を記憶し、続く質問に答えろ。',icon:'◷'},
   {id:'chase',title:'撒け',sub:'3列の人混みを左右によけ、追っ手を振り切れ。',icon:'⇄'},
   {id:'eat',title:'食べろ',sub:'黄色い和服の大男。10人前のチャーハンを食べ切れ。',icon:'◒'},
-  {id:'files',title:'鳴らせ',sub:'15の倍数で出現。音楽フォルダからbeppan.mp3を開け。',icon:'♫'},
+  {id:'files',title:'鳴らせ',sub:'音楽フォルダからbeppan.mp3を開け。',icon:'♫'},
 ];
+export const MISSIONS_PER_LOOP=missions.length;
 
 export abstract class Round {
   abstract id: GameId;
@@ -26,7 +27,8 @@ export abstract class Round {
   successDuration=1.05;
   abstract hint: string;
   protected speed: number;
-  constructor(protected api: Api, public stage: number) { this.speed=Math.min(2.4,1+Math.floor((stage-1)/8)*.2); }
+  protected get loop(){return Math.floor((this.stage-1)/MISSIONS_PER_LOOP);}
+  constructor(protected api: Api, public stage: number) { this.speed=Math.min(2.4,1+this.loop*.2); }
   tick(dt: number) { if(this.ended)return; this.elapsed+=dt; this.update(dt); if(this.elapsed>=this.duration&&!this.ended)this.timeout(); }
   protected update(_dt: number) {}
   animateSuccess(_dt: number) {}
@@ -132,7 +134,7 @@ class Knock extends Round {
   id='knock' as const;
   successDuration=1.45;
   hint='紙の5桁の認証コードを覚えろ。消えたらノック。';
-  private code=Array.from({length:5},()=>Math.min(6,2+Math.floor((this.stage-1)/8))+rand(4));
+  private code=Array.from({length:5},()=>Math.min(6,2+this.loop)+rand(4));
   private turn=0; private taps=0; private delay=0; private lastAuto=0; private ripples:number[]=[];
   private feintTurn=-1;
   private doorOpening=0;
@@ -141,7 +143,7 @@ class Knock extends Round {
   private get knocking(){return this.elapsed>=4/this.speed;}
   constructor(api:Api,stage:number){
     super(api,stage);this.duration=20/this.speed;
-    if(stage>8&&Math.random()<.4)this.feintTurn=pick([1,3]);
+    if(this.loop>0&&Math.random()<.4)this.feintTurn=pick([1,3]);
   }
   controls(){return !this.knocking||this.turn===5?[]:[{label:this.turn%2?'応答を待て…':'ノック',action:'primary',key:'SPACE'}];}
   animateSuccess(dt:number){if(this.turn===5)this.doorOpening=Math.min(1,this.doorOpening+dt/.8);}
@@ -311,8 +313,8 @@ class Laser extends Round {
     const w=Math.floor(t/this.period); this.phase=Math.max(0,(t%this.period-this.warningExtra)/this.cycleDuration);
     if(w!==this.wave){
       this.wave=w;this.groundLaser=w%2===1;
-      const combined=this.groundLaser&&this.stage>=9&&(w%4===3||this.stage>=17);
-      this.danger=!this.groundLaser||combined?shuffle([0,1,2,3]).slice(0,this.stage>=9?2:1):[];
+      const combined=this.groundLaser&&this.loop>0&&(w%4===3||this.loop>1);
+      this.danger=!this.groundLaser||combined?shuffle([0,1,2,3]).slice(0,this.loop>0?2:1):[];
       this.hint=combined?'縦線をよけながらジャンプ。左右移動＋中央タップ / ↑・Space':this.groundLaser?'下の横レーザーはジャンプ。中央タップ / ↑・Space':'縦レーザーは左右によける。左右タップ / ← →';
       this.api.sound('warning');
     }
@@ -523,7 +525,7 @@ class Chase extends Round {
   protected update(dt:number){
     this.px+=(190+this.lane*170-this.px)*Math.min(1,dt*18);
     if(this.elapsed>=this.next&&this.elapsed<this.duration-2.6/this.speed){
-      shuffle([0,1,2]).slice(0,this.stage>8?2:1).forEach(lane=>this.walkers.push({lane,z:0,color:pick(['#777260','#796075','#627b7c','#818574'])}));
+      shuffle([0,1,2]).slice(0,this.loop>0?2:1).forEach(lane=>this.walkers.push({lane,z:0,color:pick(['#777260','#796075','#627b7c','#818574'])}));
       this.next=this.elapsed+1/this.speed;
     }
     this.walkers.forEach(w=>{
@@ -569,8 +571,7 @@ class Eat extends Round {
     if(s!=='primary'||this.ended)return;this.portions++;this.bite=.2;this.api.sound('tap');
     for(let i=0;i<7;i++)this.grains.push({x:360,y:375,vx:(Math.random()-.5)*220,vy:-80-Math.random()*150,life:.55});
     if(this.portions>=10){
-      // Each loop contains one Eat round; the second completion starts in loop two.
-      if(this.stage>8)this.flyingServingAge=0;
+      if(this.loop>0)this.flyingServingAge=0;
       this.end(true,'10人前、完食。ごっつぁんです。');
     }
   }
