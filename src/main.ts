@@ -147,9 +147,9 @@ function finishRound(ok:boolean,message:string){
   audio.play(ok?'good':'bad');
   if(!ok){endRun();return;}
   el('transition').className=`transition feedback ${ok?'success':'failure'}`;el('transition').hidden=false;
-  el('transition-label').textContent=ok?'MISSION ACCOMPLISHED':'OPERATION FAILED';
-  el('transition-title').textContent=ok?'任務完了':'任務失敗';el('transition-message').textContent=message;
-  if(round?.id==='chase'){el('pursuer').hidden=false;el('transition-title').textContent='追跡解除';el('transition-label').textContent='PURSUIT LOST';el('transition').classList.add('chase-clear');}
+  el('transition-label').textContent='';
+  el('transition-title').textContent='任務完了';
+  el('transition-message').textContent='';
   if(round?.id==='knock'){
     el('transition').classList.add('door-clear');
     el('game-hint').textContent='認証成功。扉が開きます。';
