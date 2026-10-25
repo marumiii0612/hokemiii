@@ -16,7 +16,7 @@ test('mobile title, manual, direct map tap, one-miss failure and immediate resta
   await expect(page.getByRole('button',{name:'はじめる',exact:true})).toBeVisible();
   expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
   await page.getByRole('button',{name:'遊び方を見る'}).click();
-  await expect(page.locator('.manual-mission')).toHaveCount(8);
+  await expect(page.locator('.manual-mission')).toHaveCount(9);
   await expect(page.getByText('食べろ',{exact:true})).toBeVisible();
   await page.getByRole('button',{name:'遊び方を閉じる'}).click();
   await start(page);

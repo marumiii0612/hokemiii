@@ -1,6 +1,8 @@
 import './style.css';
 import { Audio } from './audio';
 import { TitleMusic } from './title-music';
+import {FileMusicPlayer} from './file-music';
+import {musicFiles} from './music-files';
 import { createRound, missions, type GameId, type Round } from './games';
 import { C, W, H, rect, shuffle } from './draw';
 import { getRank } from './rank';
@@ -18,18 +20,18 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
 
     <main id="title-screen" class="title-screen">
       <div class="title-art" aria-hidden="true"><div class="arch"><div class="door"><i></i><b></b></div></div><div class="floor-lines"></div><div class="red-thread"></div></div>
-      <div class="title-meta"><span class="status-dot"></span> SINGLE PLAYER <span class="meta-divider">/</span> 8 MISSIONS</div>
+      <div class="title-meta"><span class="status-dot"></span> SINGLE PLAYER <span class="meta-divider">/</span> 9 MISSIONS</div>
       <div class="title-content">
         <span class="eyebrow">THE FIELD IS WAITING.</span>
         <h1 class="game-title">HOKEMI</h1>
         <button id="start-button" class="start-button">はじめる<span class="start-arrow">${arrow}</span></button>
-        <button id="checkpoint-start-button" class="secondary-button checkpoint-start" hidden>21からはじめる ${arrow}</button>
+        <button id="checkpoint-start-button" class="secondary-button checkpoint-start" hidden>11からはじめる ${arrow}</button>
         <p class="title-tagline">判断は、一瞬。</p>
         <div class="title-rule"></div>
-        <p class="title-description">八つの任務。一度きりの判断。<br>どこまで生き残れるか。</p>
+        <p class="title-description">九つの任務。一度きりの判断。<br>どこまで生き残れるか。</p>
         <div class="title-record"><span>自己最高記録</span><strong id="title-best">00</strong><span>STAGES</span></div>
       </div>
-      <div class="title-bottom"><button id="help-button" class="text-button"><span class="help-symbol">?</span> 遊び方を見る</button><span class="title-id">OPERATION No. 008</span></div>
+      <div class="title-bottom"><button id="help-button" class="text-button"><span class="help-symbol">?</span> 遊び方を見る</button><span class="title-id">OPERATION No. 009</span></div>
     </main>
 
     <main id="play-screen" class="play-screen" hidden>
@@ -42,6 +44,11 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
       <div class="timer-track"><div id="time-bar"></div></div>
       <div class="game-viewport"><div class="game-window" id="game-window">
         <canvas id="game-canvas" width="720" height="640" tabindex="0" role="img" aria-label="ミニゲームの画面。操作説明と下のボタンでも操作できます。"></canvas>
+        <section id="file-picker" class="file-picker" aria-label="音楽フォルダ" hidden inert>
+          <div class="file-window-bar"><span class="folder-symbol" aria-hidden="true">▰</span><span>音楽</span><span class="file-window-dots" aria-hidden="true">−　□　×</span></div>
+          <div class="file-address">PC <span>›</span> 音楽 <span class="file-sort">名前 ↑</span></div>
+          <div id="file-list" class="file-list"></div>
+        </section>
         <div id="transition" class="transition" hidden><span id="transition-label" class="eyebrow"></span><div id="pursuer" class="pursuer" hidden><svg viewBox="0 0 100 110" aria-hidden="true"><path d="M18 110v-24q0-26 32-26t32 26v24" fill="#0b1511" stroke="#789075"/><path d="m35 65 15 25 15-25M50 90v20" fill="none" stroke="#92a181"/><ellipse cx="50" cy="34" rx="19" ry="23" fill="#7b8c70"/><path d="M31 31q-3-29 19-28 23 0 19 28l-10-15-15 5Z" fill="#0b1511"/><path d="M56 40h21V27M76 27h5v25h-7" fill="none" stroke="#b4bda0" stroke-width="3"/><path d="M38 35h6m12 0h6" stroke="#18251b" stroke-width="2"/></svg><span>追跡者 / 無線</span></div><strong id="transition-title"></strong><p id="transition-message"></p><div class="transition-mark">${mark}</div></div>
         <div id="pause-panel" class="pause-panel" role="dialog" aria-modal="true" aria-label="一時停止" hidden><span class="eyebrow">OPERATION SUSPENDED</span><h2>一時停止</h2><p>焦らず、次の一手を。</p><button id="resume-button" class="primary-button">つづける ${arrow}</button><button id="quit-button" class="text-button">任務を終了する</button></div>
       </div></div>
@@ -58,7 +65,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
       <p id="new-record" class="new-record" hidden>NEW PERSONAL BEST</p>
       <div class="result-best">自己最高記録 <strong id="result-best">0</strong> STAGES</div>
       <button id="retry-button" class="primary-button">もう一度、潜入する ${arrow}</button>
-      <button id="alternate-retry-button" class="secondary-button" hidden>21からリスタート ${arrow}</button>
+      <button id="alternate-retry-button" class="secondary-button" hidden>11からリスタート ${arrow}</button>
       <button id="share-button" class="secondary-button">記録を共有する <span>↗</span></button>
       <div id="share-fallback" hidden><p>この記録をコピーして共有できます。</p><textarea id="share-text" readonly aria-label="共有用の記録"></textarea></div>
       <button id="back-button" class="text-button">タイトルへ戻る</button>
@@ -72,7 +79,10 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
     <footer class="site-footer"><span>FICTIONAL OPERATIONS BUREAU</span><span>EST. 2026 <i>●</i> JP</span></footer>
   </div>
   <audio id="bgm-audio" src="./audio/main.mp3" preload="none" loop hidden></audio>
-  <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-header"><span class="eyebrow">FIELD MANUAL</span><button id="close-help" class="icon-button" aria-label="遊び方を閉じる">×</button></div><h2 id="help-title">任務の手引き<span>。</span></h2><p class="help-intro">ランダムに続く8つのミニゲーム。<br>制限時間内に成功させ、自己最高記録を目指せ。</p><div class="mission-list">${missions.map(m=>`<div class="manual-mission"><span>${m.icon}</span><div><h3>${m.title}</h3><p>${m.sub}</p></div></div>`).join('')}</div><div class="manual-note"><p>ミスするまでステージは続き、40クリアまでは任務失敗、41クリア以上は殉職。8ステージごとに1周し、2周目は1.2倍、3周目は1.4倍と加速（最大2.4倍）。20クリアで21からの再開を解放。記録はこの端末に保存されます。</p><p>PC：画面クリック・Space・矢印キー・数字1〜4。P / Escで一時停止。スマホ：画面または操作ボタンをタップ。</p></div><details><summary>このゲームについて・地図の出典</summary><p>VIVANTに着想を得た、非公式のオリジナルファンゲームです。作品の画像・俳優の肖像は使用していません。BGMは提供された音声ファイル、記憶写真はオリジナルイラストです。</p><p>日本地図：国土地理院「地球地図日本」。dataofjapan/land の地理データを簡略化して使用。一部の島嶼は省略しています。地図データの利用条件は <a href="https://github.com/dataofjapan/land" target="_blank" rel="noreferrer">配布元</a> を参照してください。</p></details></dialog>
+  <audio id="file-party-audio" src="./audio/party.mp3" preload="none" loop hidden></audio>
+  <audio id="file-yes-audio" src="./audio/yes.mp3" preload="none" loop hidden></audio>
+  <audio id="file-poi-audio" src="./audio/poi.mp3" preload="none" loop hidden></audio>
+  <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-header"><span class="eyebrow">FIELD MANUAL</span><button id="close-help" class="icon-button" aria-label="遊び方を閉じる">×</button></div><h2 id="help-title">任務の手引き<span>。</span></h2><p class="help-intro">8種類のランダム任務と、15の倍数に現れる特別任務。<br>制限時間内に成功させ、自己最高記録を目指せ。</p><div class="mission-list">${missions.map(m=>`<div class="manual-mission"><span>${m.icon}</span><div><h3>${m.title}</h3><p>${m.sub}</p></div></div>`).join('')}</div><div class="manual-note"><p>ミスするまでステージは続き、40クリアまでは任務失敗、41クリア以上は殉職。8ステージごとに1周し、2周目は1.2倍、3周目は1.4倍と加速（最大2.4倍）。10クリアで11からの再開を解放。記録はこの端末に保存されます。</p><p>PC：画面クリック・Space・矢印キー・数字1〜4。P / Escで一時停止。スマホ：画面または操作ボタンをタップ。</p></div><details><summary>このゲームについて・地図の出典</summary><p>VIVANTに着想を得た、非公式のオリジナルファンゲームです。作品の画像・俳優の肖像は使用していません。BGMは提供された音声ファイル、記憶写真はオリジナルイラストです。</p><p>日本地図：国土地理院「地球地図日本」。dataofjapan/land の地理データを簡略化して使用。一部の島嶼は省略しています。地図データの利用条件は <a href="https://github.com/dataofjapan/land" target="_blank" rel="noreferrer">配布元</a> を参照してください。</p></details></dialog>
   <div id="toast" class="toast" role="status" hidden></div>
 `;
 
@@ -83,22 +93,26 @@ try{const n=Number(localStorage.getItem('sennyu-best-v1'));if(Number.isFinite(n)
 let state:'title'|'briefing'|'playing'|'feedback'|'result'='title';
 let round:Round|null=null, bag:GameId[]=[], lastGame:GameId|null=null;
 let cleared=0,paused=false,transitionTime=0,controlSignature='',lastHint='',oldBest=best;
-let runStart:1|21=1;
+let runStart:1|11=1;
 let finalReason='',lastFrame=performance.now(),toastTimer=0;
 const titleMusic=new TitleMusic(el('title-bgm-panel'),el<HTMLAudioElement>('bgm-audio'),el<HTMLButtonElement>('bgm-button'),el('bgm-status'),audio);
+const fileMusic=new FileMusicPlayer({party:el<HTMLAudioElement>('file-party-audio'),yes:el<HTMLAudioElement>('file-yes-audio'),poi:el<HTMLAudioElement>('file-poi-audio')},audio);
 const canvas=el<HTMLCanvasElement>('game-canvas');
 const ctx=canvas.getContext('2d')!;
 function resizeCanvas(){const dpr=Math.min(devicePixelRatio||1,2);canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);}
 resizeCanvas();window.addEventListener('resize',resizeCanvas);
 
-function updateMusic(){titleMusic.setContext(state!=='result'&&!paused&&!document.hidden,audio.enabled);}
+function updateMusic(){
+  titleMusic.setContext(state!=='result'&&!paused&&!document.hidden,audio.enabled);
+  fileMusic.setContext(audio.enabled,!document.hidden);
+}
 function updateSound(){el('sound-button').setAttribute('aria-pressed',String(audio.enabled));el('sound-button').setAttribute('aria-label',audio.enabled?'音をオフにする':'音をオンにする');el('sound-button').querySelector('span')!.textContent=audio.enabled?'ON':'OFF';updateMusic();}
 updateSound();
 function updateBest(){
   el('title-best').textContent=String(best).padStart(2,'0');el('result-best').textContent=String(best);
-  el('checkpoint-start-button').hidden=best<20;el('alternate-retry-button').hidden=best<20;
-  el('retry-button').innerHTML=`${runStart===21?'21からリスタート':'もう一度、潜入する'} ${arrow}`;
-  el('alternate-retry-button').innerHTML=`${runStart===21?'1からはじめる':'21からリスタート'} ${arrow}`;
+  el('checkpoint-start-button').hidden=best<10;el('alternate-retry-button').hidden=best<10;
+  el('retry-button').innerHTML=`${runStart===11?'11からリスタート':'もう一度、潜入する'} ${arrow}`;
+  el('alternate-retry-button').innerHTML=`${runStart===11?'1からはじめる':'11からリスタート'} ${arrow}`;
 }
 updateBest();
 function showScreen(name:'title'|'play'|'result'){
@@ -107,23 +121,33 @@ function showScreen(name:'title'|'play'|'result'){
   document.body.dataset.screen=name;
   window.scrollTo({top:0,left:0,behavior:'instant'});
 }
-function title(){state='title';round=null;paused=false;el('pause-panel').hidden=true;showScreen('title');updateBest();el('start-button').focus({preventScroll:true});}
-function begin(startStage:1|21=1){
-  if(startStage===21&&best<20)return;
-  audio.unlock();oldBest=best;runStart=startStage;cleared=startStage-1;bag=[];lastGame=null;paused=false;
+function title(){fileMusic.stop();state='title';round=null;paused=false;el('pause-panel').hidden=true;showScreen('title');updateBest();el('start-button').focus({preventScroll:true});}
+function begin(startStage:1|11=1){
+  if(startStage===11&&best<10)return;
+  fileMusic.stop();audio.unlock();oldBest=best;runStart=startStage;cleared=startStage-1;bag=[];lastGame=null;paused=false;
   el('pause-panel').hidden=true;el('share-fallback').hidden=true;nextRound();showScreen('play');
 }
 function nextRound(){
-  if(!bag.length){
-    bag=shuffle(missions.map(m=>m.id));if(bag[0]===lastGame)[bag[0],bag[1]]=[bag[1],bag[0]];
-    bag=bag.slice(0,8-cleared%8);
+  const special=(cleared+1)%15===0;
+  if(!special&&!bag.length){
+    bag=shuffle(missions.filter(m=>m.id!=='files').map(m=>m.id));if(bag[0]===lastGame)[bag[0],bag[1]]=[bag[1],bag[0]];
+    const normalCleared=cleared-Math.floor(cleared/15);
+    bag=bag.slice(0,8-normalCleared%8);
   }
-  const id=bag.shift()!;lastGame=id;
+  const id=special?'files':bag.shift()!;lastGame=id;
   const m=missions.find(m=>m.id===id)!;
-  round=createRound(id,{finish:finishRound,sound:s=>audio.play(s)},cleared+1);
+  round=createRound(id,{finish:finishRound,sound:s=>audio.play(s),music:track=>fileMusic.play(track)},cleared+1);
+  el('file-picker').hidden=id!=='files';el('file-picker').inert=true;
+  el('file-list').replaceChildren(...(id==='files'?musicFiles.map((file,index)=>{
+    const button=document.createElement('button');button.className='music-file';button.type='button';
+    const icon=document.createElement('span');icon.className='music-file-icon';icon.setAttribute('aria-hidden','true');icon.textContent='♫';
+    const name=document.createElement('span');name.textContent=file.name;button.append(icon,name);
+    button.addEventListener('click',()=>dispatch(`file-${index}`));return button;
+  }):[]));
+  el('file-list').scrollTop=0;
   state='briefing';transitionTime=0;controlSignature='';lastHint='';
   el('stage-number').textContent=String(cleared+1).padStart(2,'0');
-  el('mission-en').textContent=`MISSION ${String(missions.indexOf(m)+1).padStart(2,'0')} / ${['PRECISION','OBSERVATION','CONTACT','EVASION','CONTROL','MEMORY','ESCAPE','REFUEL'][missions.indexOf(m)]}`;
+  el('mission-en').textContent=`MISSION ${String(missions.indexOf(m)+1).padStart(2,'0')} / ${['PRECISION','OBSERVATION','CONTACT','EVASION','CONTROL','MEMORY','ESCAPE','REFUEL','PLAYBACK'][missions.indexOf(m)]}`;
   el('mission-title').innerHTML=`${m.title}<span>。</span>`;
   el('speed-label').textContent=`SPEED ×${Math.min(2.4,1+Math.floor(cleared/8)*.2).toFixed(2)}`;
   el('loop-label').textContent=`LOOP ${String(Math.floor(cleared/8)+1).padStart(2,'0')}`;
@@ -142,6 +166,7 @@ function nextRound(){
 function finishRound(ok:boolean,message:string){
   if(state!=='playing')return;
   state='feedback';transitionTime=0;finalReason=message;
+  el('file-picker').inert=true;
   if(ok){cleared++;if(cleared>best){best=cleared;try{localStorage.setItem('sennyu-best-v1',String(best));}catch{}}}
   audio.play(ok?'good':'bad');
   if(!ok){endRun();return;}
@@ -198,7 +223,7 @@ function frame(now:number){
   const dt=Math.min((now-lastFrame)/1000,.05);lastFrame=now;
   if(round&&state!=='title'&&state!=='result'){
     if(!paused){
-      if(state==='briefing'){transitionTime+=dt;if(transitionTime>1.25){state='playing';el('transition').hidden=true;updateControls();}}
+      if(state==='briefing'){transitionTime+=dt;if(transitionTime>1.25){state='playing';el('transition').hidden=true;el('file-picker').inert=false;updateControls();}}
       else if(state==='playing'){
         const current=round;
         current.tick(dt);
@@ -225,13 +250,14 @@ document.addEventListener('keydown',e=>{
   if(el<HTMLDialogElement>('help-dialog').open)return;
   if((e.key==='Escape'||e.code==='KeyP')&&['playing','briefing','feedback'].includes(state)){e.preventDefault();if(!e.repeat)setPaused(!paused);return;}
   if(state!=='playing'||paused)return;
+  if(round?.id==='files'&&(document.activeElement as HTMLElement)?.closest('#file-picker'))return;
   const action:Record<string,string>={Space:'primary',ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down',Digit1:'choice-0',Digit2:'choice-1',Digit3:'choice-2',Digit4:'choice-3',Numpad1:'choice-0',Numpad2:'choice-1',Numpad3:'choice-2',Numpad4:'choice-3'};
   if(action[e.code]){e.preventDefault();if(!e.repeat)dispatch(action[e.code]);}
 });
 document.addEventListener('visibilitychange',()=>{if(document.hidden)setPaused(true);updateMusic();});
 window.addEventListener('blur',()=>setPaused(true));
-el('start-button').onclick=()=>begin();el('checkpoint-start-button').onclick=()=>begin(21);
-el('retry-button').onclick=()=>begin(runStart);el('alternate-retry-button').onclick=()=>begin(runStart===21?1:21);
+el('start-button').onclick=()=>begin();el('checkpoint-start-button').onclick=()=>begin(11);
+el('retry-button').onclick=()=>begin(runStart);el('alternate-retry-button').onclick=()=>begin(runStart===11?1:11);
 el('back-button').onclick=title;
 el('home-button').onclick=()=>{if(state==='title'||state==='result')title();else setPaused(true);};
 el('pause-button').onclick=()=>setPaused(!paused);el('resume-button').onclick=()=>setPaused(false);

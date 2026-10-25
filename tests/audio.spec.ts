@@ -125,13 +125,13 @@ test.describe('uploaded MP3 BGM',()=>{
   test('clears keep the song playing, and checkpoint retries resume it after failure',async({page})=>{
     await page.addInitScript(()=>localStorage.setItem('sennyu-best-v1','20'));await music(page);
     await page.getByRole('button',{name:'BGMを再生',exact:true}).tap();await playing(page);await clock(page);
-    await page.getByRole('button',{name:'21からはじめる',exact:true}).click();await page.clock.runFor(1300);
+    await page.getByRole('button',{name:'11からはじめる',exact:true}).click();await page.clock.runFor(1300);
     const before=await state(page);await tapCanvas(page,330,336);await expect(page.locator('#transition-title')).toHaveText('任務完了');
-    await page.clock.runFor(2400);await expect(page.locator('#stage-number')).toHaveText('22');
+    await page.clock.runFor(2400);await expect(page.locator('#stage-number')).toHaveText('12');
     expect((await state(page)).paused).toBe(false);expect((await state(page)).plays).toBe(before.plays);
     await page.clock.runFor(20000);await expect(page.locator('#result-screen')).toBeVisible();expect((await state(page)).paused).toBe(true);
-    await page.getByRole('button',{name:'21からリスタート',exact:true}).click();await playing(page);
-    await expect(page.locator('#stage-number')).toHaveText('21');
+    await page.getByRole('button',{name:'11からリスタート',exact:true}).click();await playing(page);
+    await expect(page.locator('#stage-number')).toHaveText('11');
   });
 
   test('retries preserve an explicit BGM stop and master mute',async({page})=>{

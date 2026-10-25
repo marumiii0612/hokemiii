@@ -1,10 +1,11 @@
 import japan from './data/japan.json';
 import okinawa from './data/okinawa.json';
+import {musicFiles,type FileMusic} from './music-files';
 import { C, W, H, rect, text, line, circle, grid, cross, person, vignette, rand, pick, shuffle } from './draw';
 
-export type GameId = 'knife' | 'map' | 'knock' | 'laser' | 'aim' | 'memory' | 'chase' | 'eat';
+export type GameId = 'knife' | 'map' | 'knock' | 'laser' | 'aim' | 'memory' | 'chase' | 'eat' | 'files';
 export type Control = { label: string; action: string; key?: string };
-type Api = { finish: (ok: boolean, message: string) => void; sound: (kind: 'tap'|'shoot'|'warning') => void };
+type Api = { finish: (ok: boolean, message: string) => void; sound: (kind: 'tap'|'shoot'|'warning') => void; music?: (track:FileMusic)=>void };
 export const missions: { id: GameId; title: string; sub: string; icon: string }[] = [
   {id:'knife',title:'刺せ',sub:'バナナが中央に来たら、ナイフを投げろ。チャンスは一度。',icon:'↟'},
   {id:'map',title:'見つけろ',sub:'日本地図の間違いを見つけて、その場所をタップ。',icon:'⌖'},
@@ -14,6 +15,7 @@ export const missions: { id: GameId; title: string; sub: string; icon: string }[
   {id:'memory',title:'覚えろ',sub:'短時間だけ表示される写真を記憶し、続く質問に答えろ。',icon:'◷'},
   {id:'chase',title:'撒け',sub:'3列の人混みを左右によけ、追っ手を振り切れ。',icon:'⇄'},
   {id:'eat',title:'食べろ',sub:'黄色い和服の大男。10人前のチャーハンを食べ切れ。',icon:'◒'},
+  {id:'files',title:'鳴らせ',sub:'15の倍数で出現。音楽フォルダからbeppan.mp3を開け。',icon:'♫'},
 ];
 
 export abstract class Round {
@@ -105,7 +107,7 @@ class Find extends Round {
   pointer(x:number,y:number){
     const p=places[this.target];
     const px=mapLayout.x+p.x*mapLayout.scale,py=mapLayout.y+p.y*mapLayout.scale;
-    const rx=Math.max(38,p.rx*mapLayout.scale),ry=Math.max(38,p.ry*mapLayout.scale);
+    const rx=Math.max(58,p.rx*mapLayout.scale+18),ry=Math.max(58,p.ry*mapLayout.scale+18);
     this.answer(((x-px)/rx)**2+((y-py)/ry)**2<=1);
   }
   draw(c:CanvasRenderingContext2D){
@@ -629,7 +631,60 @@ class Eat extends Round {
   }
 }
 
+class Files extends Round {
+  id='files' as const;
+  hint='音楽フォルダからファイルを開く';
+  constructor(api:Api,stage:number){super(api,stage);this.duration=10/this.speed;}
+  action(value:string){
+    if(this.ended||!/^file-\d+$/.test(value))return;
+    const file=musicFiles[Number(value.slice(5))];
+    if(!file)return;
+    if(file.music===null){this.end(true,'');return;}
+    this.api.music?.(file.music);this.end(false,'');
+  }
+  draw(c:CanvasRenderingContext2D){
+    rect(c,0,0,W,H,'#101820');
+    const glow=c.createRadialGradient(360,300,60,360,300,480);
+    glow.addColorStop(0,'#284453');glow.addColorStop(1,'#101820');
+    c.fillStyle=glow;c.fillRect(0,0,W,H);
+    rect(c,24,20,672,573,'#070b0f',12);rect(c,35,31,650,542,'#17232f',5);
+    rect(c,35,31,650,34,'#293b4a',5);
+    ['#b96568','#b9a265','#6f9e83'].forEach((color,i)=>circle(c,53+i*19,48,5,color));
+    text(c,'mission.ts — secure-workspace',139,48,13,'#c4d1d8','left');
+    rect(c,35,65,38,508,'#14202b');
+    const code=[
+      'import { decrypt, verify } from "secure-channel";',
+      'const session = await connect({ encrypted: true });',
+      'type Payload<T> = { nonce: Uint8Array; data: T };',
+      'async function authenticate<T>(packet: Payload<T>) {',
+      '  const key = await crypto.subtle.importKey(',
+      '    "raw", packet.nonce, { name: "AES-GCM" },',
+      '    false, ["decrypt"]',
+      '  );',
+      '  const bytes = await decrypt(key, packet.data);',
+      '  if (!verify(bytes.signature)) throw new Error();',
+      '  return bytes.buffer.slice(0, 0x100);',
+      '}',
+      'const channel = new Map<string, Uint8Array>();',
+      'for await (const message of session.stream()) {',
+      '  channel.set(message.id, await authenticate(message));',
+      '}',
+      '$ tsc --strict --noEmit && node mission.js',
+      '[secure] connection established :: 0x7F3A',
+      '[secure] integrity check passed',
+    ];
+    code.forEach((value,i)=>{
+      text(c,String(i+1).padStart(2,'0'),61,83+i*25,11,'#557386','right');
+      text(c,value,83,83+i*25,12,i>15?'#80b78b':i%3===0?'#b09abd':i%3===1?'#80afc2':'#a3b692','left');
+    });
+    rect(c,35,552,650,21,'#253b4d');text(c,'TypeScript    UTF-8    main',51,563,10,'#afc4d2','left');
+    circle(c,360,583,3,'#77af94');rect(c,323,593,74,28,'#26333d',3);
+    c.beginPath();c.ellipse(360,625,114,9,0,0,Math.PI*2);c.fillStyle='#34414a';c.fill();
+    vignette(c);
+  }
+}
+
 export function createRound(id:GameId,api:Api,stage:number):Round {
-  const classes={knife:Knife,map:Find,knock:Knock,laser:Laser,aim:Aim,memory:Memory,chase:Chase,eat:Eat};
+  const classes={knife:Knife,map:Find,knock:Knock,laser:Laser,aim:Aim,memory:Memory,chase:Chase,eat:Eat,files:Files};
   return new classes[id](api,stage);
 }

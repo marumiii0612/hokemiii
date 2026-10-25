@@ -5,8 +5,8 @@ async function startKnock(page:Page,checkpoint=false){
   await page.addInitScript(checkpoint=>{
     let sample=0;
     // Put Knock first; at the checkpoint use 44444 and a first-reply feint.
-    if(checkpoint)localStorage.setItem('sennyu-best-v1','20');
-    Math.random=()=>{sample++;return sample===7?.999:!checkpoint&&sample>=8&&sample<=12?[0,.25,.5,.75,0][sample-8]:0;};
+    if(checkpoint)localStorage.setItem('sennyu-best-v1','10');
+    Math.random=()=>{sample++;return sample===7?.999:checkpoint&&sample>=8?.25:!checkpoint&&sample>=8&&sample<=12?[0,.25,.5,.75,0][sample-8]:0;};
     const fillText=CanvasRenderingContext2D.prototype.fillText;
     Object.assign(window,{drawnKnockText:[] as string[]});
     CanvasRenderingContext2D.prototype.fillText=function(value,x,y,maxWidth){
@@ -17,7 +17,7 @@ async function startKnock(page:Page,checkpoint=false){
   await page.goto('/');
   const time=new Date('2026-10-24T12:00:00Z');
   await page.clock.install({time});await page.clock.pauseAt(new Date(time.getTime()+1000));
-  await page.getByRole('button',{name:checkpoint?'21からはじめる':'はじめる',exact:true}).click();
+  await page.getByRole('button',{name:checkpoint?'11からはじめる':'はじめる',exact:true}).click();
   await page.clock.runFor(1300);
   await expect(page.locator('#mission-title')).toHaveText('伝えろ。');
 }
@@ -130,7 +130,7 @@ test.describe('memorize the paper authentication code',()=>{
           return play.call(this,kind);
         };
       });
-      await page.clock.runFor(3000);
+      await page.clock.runFor(4000);
       for(let i=0;i<4;i++)await page.locator('#controls button').click();
       await page.evaluate(()=>{(window as any).feintKnocks=[];});
       const count=()=>page.evaluate(()=>(window as any).feintKnocks.length as number);
@@ -142,12 +142,12 @@ test.describe('memorize the paper authentication code',()=>{
       await expect(page.locator('#controls button')).toContainText('応答を待て');
       await expect(page.locator('#result-screen')).toBeHidden();
       if(input==='wait'){
-        await page.clock.runFor(850);
+        await page.clock.runFor(1000);
         expect(await count()).toBe(4);
         await expect(page.locator('#controls button')).toContainText('ノック');
         for(let turn=0;turn<2;turn++){
           for(let i=0;i<4;i++)await page.locator('#controls button').click();
-          await page.clock.runFor(turn===0?1900:450);
+          await page.clock.runFor(turn===0?2300:550);
         }
         await expect(page.locator('#transition')).toHaveClass(/door-clear/);
         await expect(page.locator('#transition-title')).toHaveText('任務完了');
@@ -156,7 +156,7 @@ test.describe('memorize the paper authentication code',()=>{
         else if(input==='button')await page.locator('#controls button').click();
         else await page.keyboard.press('Space');
         await expect(page.locator('#result-screen h1')).toHaveText('任務失敗。');
-        await expect(page.locator('#final-score')).toHaveText('20');
+        await expect(page.locator('#final-score')).toHaveText('10');
         await expect(page.locator('#result-message')).toBeEmpty();
       }
     });
