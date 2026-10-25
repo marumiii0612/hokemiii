@@ -1,22 +1,23 @@
 import {test,expect,type Page} from '@playwright/test';
 import {tapCanvas} from './helpers';
 
-async function startKnock(page:Page){
-  await page.addInitScript(()=>{
+async function startKnock(page:Page,checkpoint=false){
+  await page.addInitScript(checkpoint=>{
     let sample=0;
-    // Put Knock first; the five digits are 2, 3, 4, 5, 2.
-    Math.random=()=>{sample++;return sample===7?.999:sample>=8&&sample<=12?[0,.25,.5,.75,0][sample-8]:0;};
+    // Put Knock first; at the checkpoint use 44444 and a first-reply feint.
+    if(checkpoint)localStorage.setItem('sennyu-best-v1','20');
+    Math.random=()=>{sample++;return sample===7?.999:!checkpoint&&sample>=8&&sample<=12?[0,.25,.5,.75,0][sample-8]:0;};
     const fillText=CanvasRenderingContext2D.prototype.fillText;
     Object.assign(window,{drawnKnockText:[] as string[]});
     CanvasRenderingContext2D.prototype.fillText=function(value,x,y,maxWidth){
       if(this.canvas.id==='game-canvas')(window as any).drawnKnockText.push(value);
       fillText.call(this,value,x,y,...(maxWidth===undefined?[]:[maxWidth]));
     };
-  });
+  },checkpoint);
   await page.goto('/');
   const time=new Date('2026-10-24T12:00:00Z');
   await page.clock.install({time});await page.clock.pauseAt(new Date(time.getTime()+1000));
-  await page.getByRole('button',{name:'はじめる',exact:true}).click();
+  await page.getByRole('button',{name:checkpoint?'21からはじめる':'はじめる',exact:true}).click();
   await page.clock.runFor(1300);
   await expect(page.locator('#mission-title')).toHaveText('伝えろ。');
 }
@@ -115,6 +116,51 @@ test.describe('memorize the paper authentication code',()=>{
     await expect(page.locator('#controls')).toBeHidden();
     expect(await paperPixel(page,210)).toBeGreaterThan(150);
   });
+
+  for(const input of ['canvas','button','keyboard','wait']){
+    test(`opponent feint holds its turn through the silent gap: ${input}`,async({page})=>{
+      await startKnock(page,true);
+      await page.evaluate(async()=>{
+        const modulePath='/src/audio.ts';
+        const {Audio}=await import(/* @vite-ignore */ modulePath);
+        const play=Audio.prototype.play;
+        Object.assign(window,{feintKnocks:[] as number[]});
+        Audio.prototype.play=function(kind:string){
+          if(kind==='tap')(window as any).feintKnocks.push(performance.now());
+          return play.call(this,kind);
+        };
+      });
+      await page.clock.runFor(3000);
+      for(let i=0;i<4;i++)await page.locator('#controls button').click();
+      await page.evaluate(()=>{(window as any).feintKnocks=[];});
+      const count=()=>page.evaluate(()=>(window as any).feintKnocks.length as number);
+      for(let step=0;step<100&&await count()<3;step++)await page.clock.runFor(20);
+      expect(await count()).toBe(3);
+      // Longer than a normal interval, but the fourth knock still has not happened.
+      await page.clock.runFor(400);
+      expect(await count()).toBe(3);
+      await expect(page.locator('#controls button')).toContainText('応答を待て');
+      await expect(page.locator('#result-screen')).toBeHidden();
+      if(input==='wait'){
+        await page.clock.runFor(850);
+        expect(await count()).toBe(4);
+        await expect(page.locator('#controls button')).toContainText('ノック');
+        for(let turn=0;turn<2;turn++){
+          for(let i=0;i<4;i++)await page.locator('#controls button').click();
+          await page.clock.runFor(turn===0?1900:450);
+        }
+        await expect(page.locator('#transition')).toHaveClass(/door-clear/);
+        await expect(page.locator('#transition-title')).toHaveText('任務完了');
+      }else{
+        if(input==='canvas')await tapCanvas(page,360,450);
+        else if(input==='button')await page.locator('#controls button').click();
+        else await page.keyboard.press('Space');
+        await expect(page.locator('#result-screen h1')).toHaveText('任務失敗。');
+        await expect(page.locator('#final-score')).toHaveText('20');
+        await expect(page.locator('#result-message')).toBeEmpty();
+      }
+    });
+  }
 });
 
 test('paper phases block early input, preserve the 16-second knock budget and stay solvable at every speed',async({page})=>{
@@ -160,5 +206,49 @@ test('paper phases block early input, preserve the 16-second knock budget and st
     expect(result.earlyBlocked).toBe(true);expect(result.hidden).toBe(true);
     expect(result.budget).toBe(result.expectedBudget);
     expect(result.digit).toBeLessThanOrEqual(9);expect(result.success,JSON.stringify(result)).toBe(true);
+  }
+});
+
+test('feints start in loop two, preserve every digit and remain solvable at maximum speed',async({page})=>{
+  await page.goto('/');
+  const results=await page.evaluate(async()=>{
+    const modulePath='/src/games.ts';
+    const {createRound}=await import(/* @vite-ignore */ modulePath);
+    const random=Math.random;
+    try{
+      return [1,8,9,16,17,65].flatMap(stage=>[.25,.999].flatMap(codeSample=>['none','first','second'].map(feint=>{
+        let sample=0;
+        Math.random=()=>{sample++;return sample<=5?codeSample:sample===6?(feint==='none'?.9:.1):feint==='second'?.9:.1;};
+        const verdict:boolean[]=[],sounds:number[]=[];
+        const game=createRound('knock',{finish:(ok:boolean)=>verdict.push(ok),sound:()=>sounds.push(game.elapsed)},stage);
+        const speed=Math.min(2.4,1+Math.floor((stage-1)/8)*.2);
+        const digit=Math.min(6,2+Math.floor((stage-1)/8))+Math.floor(codeSample*4);
+        const advanceUntil=(ready:()=>boolean)=>{for(let step=0;step<2000&&!ready()&&!verdict.length;step++)game.tick(.005);};
+        advanceUntil(()=>game.controls()[0]?.label==='ノック');
+        const replies:{count:number;gaps:number[]}[]=[];
+        for(let turn=0;turn<3;turn++){
+          for(let tap=0;tap<digit;tap++)game.action('primary');
+          const start=sounds.length;
+          advanceUntil(()=>game.controls()[0]?.label!=='ノック');
+          if(turn<2){
+            advanceUntil(()=>game.controls()[0]?.label==='ノック');
+            const reply=sounds.slice(start);
+            replies.push({count:reply.length,gaps:reply.slice(1).map((at,i)=>(at-reply[i])*speed)});
+          }
+        }
+        return{stage,feint,digit,replies,success:verdict[0]===true,finishedBeforeTimeout:game.elapsed<game.duration};
+      })));
+    }finally{Math.random=random;}
+  });
+  for(const result of results){
+    expect(result.success,JSON.stringify(result)).toBe(true);
+    expect(result.finishedBeforeTimeout).toBe(true);
+    result.replies.forEach((reply:{count:number;gaps:number[]},index:number)=>{
+      expect(reply.count).toBe(result.digit);
+      const delayed=reply.gaps.filter(gap=>gap>.7);
+      const expected=result.stage>8&&result.feint===(index===0?'first':'second');
+      expect(delayed.length,JSON.stringify(result)).toBe(expected?1:0);
+      if(expected)expect(delayed[0]).toBeCloseTo(1.05,1);
+    });
   }
 });

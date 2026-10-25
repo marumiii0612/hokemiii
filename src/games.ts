@@ -132,11 +132,15 @@ class Knock extends Round {
   hint='紙の5桁の認証コードを覚えろ。消えたらノック。';
   private code=Array.from({length:5},()=>Math.min(6,2+Math.floor((this.stage-1)/8))+rand(4));
   private turn=0; private taps=0; private delay=0; private lastAuto=0; private ripples:number[]=[];
+  private feintTurn=-1;
   private doorOpening=0;
   private paper?:HTMLCanvasElement;
   private dust:{x:number;y:number;release:number;drift:number;size:number;color:string}[]=[];
   private get knocking(){return this.elapsed>=4/this.speed;}
-  constructor(api:Api,stage:number){super(api,stage);this.duration=20/this.speed;}
+  constructor(api:Api,stage:number){
+    super(api,stage);this.duration=20/this.speed;
+    if(stage>8&&Math.random()<.4)this.feintTurn=pick([1,3]);
+  }
   controls(){return !this.knocking||this.turn===5?[]:[{label:this.turn%2?'応答を待て…':'ノック',action:'primary',key:'SPACE'}];}
   animateSuccess(dt:number){if(this.turn===5)this.doorOpening=Math.min(1,this.doorOpening+dt/.8);}
   protected update(dt:number){
@@ -147,7 +151,8 @@ class Knock extends Round {
     this.hint='記憶した回数だけノック。相手の番に叩くと失敗。';
     this.ripples=this.ripples.map(r=>r+dt).filter(r=>r<.7);
     if(this.delay>0){this.delay-=dt;if(this.delay<=0){this.turn++;this.taps=0;this.lastAuto=this.elapsed;if(this.turn===5)this.end(true,'認証コード、照合完了。');}return;}
-    if(this.turn%2&&this.elapsed-this.lastAuto>.32/this.speed){this.lastAuto=this.elapsed;this.knock();}
+    const autoInterval=(this.turn===this.feintTurn&&this.taps===this.code[this.turn]-1?1.05:.32)/this.speed;
+    if(this.turn%2&&this.elapsed-this.lastAuto>autoInterval){this.lastAuto=this.elapsed;this.knock();}
   }
   private knock(){this.taps++;this.api.sound('tap');this.ripples.push(0);if(this.taps===this.code[this.turn])this.delay=.55/this.speed;}
   action(s:string){
