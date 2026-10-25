@@ -155,6 +155,7 @@ function finishRound(ok:boolean,message:string){
     el('game-hint').textContent='認証成功。扉が開きます。';
     canvas.setAttribute('aria-label','認証コードの照合に成功し、扉が開きます。');
   }
+  if(round?.id==='eat'&&round.stage>8)el('transition').classList.add('rice-clear');
   el('controls').querySelectorAll('button').forEach(b=>b.disabled=true);
 }
 function endRun(failed=true){

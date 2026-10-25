@@ -224,3 +224,11 @@ body[data-screen="play"] .game-bottom { margin: 0; font-size: 7px; }
 
 :is(.briefing, .feedback) > :not(#transition-title) { display: none; }
 :is(.briefing, .feedback) > #transition-title { margin: 0; }
+
+.rice-clear {
+  justify-content: flex-start;
+  padding-top: 8%;
+  background: linear-gradient(#111b1666, transparent 40%);
+  backdrop-filter: none;
+}
+.rice-clear > strong { text-shadow: 0 2px 12px #111b16, 0 0 20px #111b16; }

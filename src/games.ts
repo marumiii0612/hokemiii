@@ -189,7 +189,7 @@ class Knock extends Round {
     for(let i=0;i<650;i++)rect(c,this.grainNoise(i)*480,this.grainNoise(i+700)*280,1,1,'#79694f23');
     line(c,[[238,0],[241,280]],'#a6936525');line(c,[[240,0],[243,280]],'#fff8df65');
     line(c,[[30,96],[450,96]],'#9f8c63',1);
-    text(c,'認証コード（5桁）',240,62,27,'#352f24','center',600);
+    text(c,'認証コード',240,62,27,'#352f24','center',600);
     this.code.forEach((digit,i)=>text(c,String(digit),96+i*72,151,54,'#29291f','center',600));
     c.beginPath();c.moveTo(449,0);c.lineTo(480,31);c.lineTo(449,31);c.closePath();c.fillStyle='#c1b492';c.fill();
     const pixels=c.getImageData(0,0,480,280).data;
@@ -555,15 +555,45 @@ class Eat extends Round {
   hint='画面を連打して、チャーハンを食べ切る';
   private portions=0; private bite=0;
   private grains:{x:number;y:number;vx:number;vy:number;life:number}[]=[];
+  private flyingServingAge:number|null=null;
   constructor(api:Api,stage:number){super(api,stage);this.duration=5.5/this.speed;}
   controls(){return[{label:'食べる',action:'primary',key:'SPACE'}];}
   action(s:string){
     if(s!=='primary'||this.ended)return;this.portions++;this.bite=.2;this.api.sound('tap');
     for(let i=0;i<7;i++)this.grains.push({x:360,y:375,vx:(Math.random()-.5)*220,vy:-80-Math.random()*150,life:.55});
-    if(this.portions>=10)this.end(true,'10人前、完食。ごっつぁんです。');
+    if(this.portions>=10){
+      // Each loop contains one Eat round; the second completion starts in loop two.
+      if(this.stage>8)this.flyingServingAge=0;
+      this.end(true,'10人前、完食。ごっつぁんです。');
+    }
   }
   pointer(){this.action('primary');}
-  protected update(dt:number){this.bite=Math.max(0,this.bite-dt);this.grains=this.grains.filter(g=>g.life>0);this.grains.forEach(g=>{g.life-=dt;g.x+=g.vx*dt;g.y+=g.vy*dt;g.vy+=420*dt;});}
+  protected update(dt:number){
+    this.bite=Math.max(0,this.bite-dt);
+    this.grains=this.grains.filter(g=>g.life>0);this.grains.forEach(g=>{g.life-=dt;g.x+=g.vx*dt;g.y+=g.vy*dt;g.vy+=420*dt;});
+    if(this.flyingServingAge!==null){
+      this.flyingServingAge+=dt*this.speed;
+      if(this.flyingServingAge>=1.1)this.flyingServingAge=null;
+    }
+  }
+  animateSuccess(dt:number){this.update(dt);}
+  private drawFlyingServing(c:CanvasRenderingContext2D){
+    if(this.flyingServingAge===null)return;
+    const progress=this.flyingServingAge/1.1;
+    c.save();
+    c.translate(W+85-(W+170)*progress,430-300*progress*(1-progress));
+    c.rotate(-.2-progress*Math.PI*3);
+    c.shadowColor='#0007';c.shadowBlur=12;c.shadowOffsetY=7;
+    c.beginPath();c.ellipse(0,0,64,18,0,0,Math.PI*2);c.fillStyle='#dfd9bf';c.fill();
+    c.shadowBlur=0;c.shadowOffsetY=0;
+    c.beginPath();c.ellipse(0,-2,57,13,0,0,Math.PI*2);c.strokeStyle='#9caa9c';c.lineWidth=2;c.stroke();
+    c.beginPath();c.ellipse(0,-7,43,25,0,Math.PI,0);c.fillStyle='#cead62';c.fill();
+    for(let i=0;i<24;i++){
+      const x=Math.sin(i*2.4)*36,y=-9-Math.abs(Math.cos(i*1.7))*20;
+      rect(c,x,y,5,3,i%4===0?'#798550':i%5===0?'#ba7050':'#e6c579',1);
+    }
+    c.restore();
+  }
   draw(c:CanvasRenderingContext2D){
     rect(c,0,0,W,H,'#292d23');
     for(let i=0;i<6;i++){rect(c,35+i*115,40,105,369,'#4b4d37');for(let j=0;j<4;j++)rect(c,40+i*115,45+j*90,95,80,'#9b987130');}
@@ -589,7 +619,8 @@ class Eat extends Round {
       c.beginPath();c.ellipse(360,516,83-(this.portions*5),Math.max(6,34-this.portions*3),0,Math.PI,0);c.fillStyle='#cead62';c.fill();
       for(let i=0;i<28;i++){const x=360+Math.sin(i*2.4)*(68-this.portions*4),y=510-Math.abs(Math.cos(i*1.7))*(24-this.portions*2);rect(c,x,y,5,3,i%4===0?'#798550':i%5===0?'#ba7050':'#e6c579',1);}
     }
-    this.grains.forEach(g=>rect(c,g.x,g.y,5,3,'#e6c579',1));vignette(c);
+    this.grains.forEach(g=>rect(c,g.x,g.y,5,3,'#e6c579',1));
+    this.drawFlyingServing(c);vignette(c);
   }
 }
 

@@ -53,7 +53,7 @@ test.describe('memorize the paper authentication code',()=>{
     const drawn=await page.evaluate(()=>(window as any).drawnKnockText as string[]);
     expect(drawn).toContain('あなたの番');
     expect(drawn.some(value=>/[0-9０-９]/.test(value))).toBe(false);
-    expect(drawn).not.toContain('認証コード（5桁）');
+    expect(drawn).not.toContain('認証コード');
     expect(await paperPixel(page,210)).toBeLessThan(90);
     expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
     for(let turn=0;turn<3;turn++){
