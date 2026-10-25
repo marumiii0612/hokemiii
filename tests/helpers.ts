@@ -1,5 +1,25 @@
 import type { Page } from '@playwright/test';
 
+export async function watchAudioActivity(page:Page){
+  await page.addInitScript(()=>{
+    const activity={contexts:0,elements:0,plays:0};
+    Object.assign(window,{audioActivity:activity});
+    for(const name of ['AudioContext','webkitAudioContext','Audio']){
+      const original=(window as any)[name];if(!original)continue;
+      (window as any)[name]=new Proxy(original,{construct(target,args,newTarget){
+        if(name==='Audio')activity.elements++;else activity.contexts++;
+        return Reflect.construct(target,args,newTarget);
+      }});
+    }
+    const play=HTMLMediaElement.prototype.play;
+    HTMLMediaElement.prototype.play=function(){activity.plays++;return play.call(this);};
+  });
+}
+
+export async function audioActivity(page:Page){
+  return page.evaluate(()=>(window as any).audioActivity as {contexts:number;elements:number;plays:number});
+}
+
 export async function watchAimTarget(page:Page){
   await page.addInitScript(()=>{
     const arc=CanvasRenderingContext2D.prototype.arc;

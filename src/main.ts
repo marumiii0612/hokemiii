@@ -1,7 +1,4 @@
 import './style.css';
-import { Audio } from './audio';
-import { TitleMusic } from './title-music';
-import {FileMusicPlayer} from './file-music';
 import {musicFiles} from './music-files';
 import { createRound, missions, MISSIONS_PER_LOOP, type GameId, type Round } from './games';
 import { C, W, H, rect, shuffle } from './draw';
@@ -10,12 +7,11 @@ import { getRank } from './rank';
 const mark = '<svg viewBox="0 0 40 40" fill="none" aria-hidden="true"><path d="m20 3 17 17-17 17L3 20Z" stroke="currentColor"/><path d="M20 11v18M11 20h18" stroke="currentColor"/><circle cx="20" cy="20" r="5" stroke="currentColor"/></svg>';
 const arrow='<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 12h15m-6-6 6 6-6 6" stroke="currentColor" stroke-width="1.5"/></svg>';
 const pauseIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14M16 5v14" stroke="currentColor" stroke-width="2"/></svg>';
-const soundIcon='<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m11 5-5 4H3v6h3l5 4V5Zm4 3c3 2 3 6 0 8m3-11c5 4 5 10 0 14" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/></svg>';
 document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
   <div class="site-frame">
     <header class="site-header">
       <button class="brand" id="home-button" aria-label="タイトルへ">${mark}<span>HOKEMI<span class="brand-en">FIELD TEST</span></span></button>
-      <div class="header-right"><span class="classified">極秘<span> / CLASSIFIED</span></span><button id="bgm-button" class="icon-button music-button" aria-label="BGMを再生" title="BGMを再生" aria-pressed="false"><span aria-hidden="true">♪</span></button><button id="sound-button" class="icon-button sound-button" aria-label="音をオフにする" aria-pressed="true">${soundIcon}<span>ON</span></button></div>
+      <div class="header-right"><span class="classified">極秘<span> / CLASSIFIED</span></span></div>
     </header>
 
     <main id="title-screen" class="title-screen">
@@ -71,43 +67,25 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
       <button id="back-button" class="text-button">タイトルへ戻る</button>
     </main>
 
-    <section id="bgm-section" aria-label="BGM">
-      <div id="title-bgm-panel" class="title-bgm-panel" hidden>
-        <p id="bgm-status" class="bgm-status" role="status"></p>
-      </div>
-    </section>
     <footer class="site-footer"><span>FICTIONAL OPERATIONS BUREAU</span><span>EST. 2026 <i>●</i> JP</span></footer>
   </div>
-  <audio id="bgm-audio" src="./audio/main.mp3" preload="none" loop hidden></audio>
-  <audio id="file-party-audio" src="./audio/party.mp3" preload="none" loop hidden></audio>
-  <audio id="file-yes-audio" src="./audio/yes.mp3" preload="none" loop hidden></audio>
-  <audio id="file-poi-audio" src="./audio/poi.mp3" preload="none" loop hidden></audio>
-  <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-header"><span class="eyebrow">FIELD MANUAL</span><button id="close-help" class="icon-button" aria-label="遊び方を閉じる">×</button></div><h2 id="help-title">任務の手引き<span>。</span></h2><p class="help-intro">ランダムに続く9種類のミニゲーム。<br>制限時間内に成功させ、自己最高記録を目指せ。</p><div class="mission-list">${missions.map(m=>`<div class="manual-mission"><span>${m.icon}</span><div><h3>${m.title}</h3><p>${m.sub}</p></div></div>`).join('')}</div><div class="manual-note"><p>ミスするまでステージは続き、40クリアまでは任務失敗、41クリア以上は殉職。9ステージごとに1周し、2周目は1.2倍、3周目は1.4倍と加速（最大2.4倍）。10クリアで11からの再開を解放。記録はこの端末に保存されます。</p><p>PC：画面クリック・Space・矢印キー・数字1〜4。P / Escで一時停止。スマホ：画面または操作ボタンをタップ。</p></div><details><summary>このゲームについて・地図の出典</summary><p>VIVANTに着想を得た、非公式のオリジナルファンゲームです。作品の画像・俳優の肖像は使用していません。BGMは提供された音声ファイル、記憶写真はオリジナルイラストです。</p><p>日本地図：国土地理院「地球地図日本」。dataofjapan/land の地理データを簡略化して使用。一部の島嶼は省略しています。地図データの利用条件は <a href="https://github.com/dataofjapan/land" target="_blank" rel="noreferrer">配布元</a> を参照してください。</p></details></dialog>
+  <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-header"><span class="eyebrow">FIELD MANUAL</span><button id="close-help" class="icon-button" aria-label="遊び方を閉じる">×</button></div><h2 id="help-title">任務の手引き<span>。</span></h2><p class="help-intro">ランダムに続く9種類のミニゲーム。<br>制限時間内に成功させ、自己最高記録を目指せ。</p><div class="mission-list">${missions.map(m=>`<div class="manual-mission"><span>${m.icon}</span><div><h3>${m.title}</h3><p>${m.sub}</p></div></div>`).join('')}</div><div class="manual-note"><p>ミスするまでステージは続き、40クリアまでは任務失敗、41クリア以上は殉職。9ステージごとに1周し、2周目は1.2倍、3周目は1.4倍と加速（最大2.4倍）。10クリアで11からの再開を解放。記録はこの端末に保存されます。</p><p>PC：画面クリック・Space・矢印キー・数字1〜4。P / Escで一時停止。スマホ：画面または操作ボタンをタップ。</p></div><details><summary>このゲームについて・地図の出典</summary><p>VIVANTに着想を得た、非公式のオリジナルファンゲームです。作品の画像・俳優の肖像は使用していません。記録写真はオリジナルイラストです。</p><p>日本地図：国土地理院「地球地図日本」。dataofjapan/land の地理データを簡略化して使用。一部の島嶼は省略しています。地図データの利用条件は <a href="https://github.com/dataofjapan/land" target="_blank" rel="noreferrer">配布元</a> を参照してください。</p></details></dialog>
   <div id="toast" class="toast" role="status" hidden></div>
 `;
 
 const el=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
-const audio=new Audio();
 let best=0;
-try{const n=Number(localStorage.getItem('sennyu-best-v1'));if(Number.isFinite(n)&&n>=0)best=Math.floor(n);audio.enabled=localStorage.getItem('sennyu-sound')!=='off';}catch{}
+try{const n=Number(localStorage.getItem('sennyu-best-v1'));if(Number.isFinite(n)&&n>=0)best=Math.floor(n);}catch{}
 let state:'title'|'briefing'|'playing'|'feedback'|'result'='title';
 let round:Round|null=null, bag:GameId[]=[], lastGame:GameId|null=null;
 let cleared=0,paused=false,transitionTime=0,controlSignature='',lastHint='',oldBest=best;
 let runStart:1|11=1;
 let finalReason='',lastFrame=performance.now(),toastTimer=0;
-const titleMusic=new TitleMusic(el('title-bgm-panel'),el<HTMLAudioElement>('bgm-audio'),el<HTMLButtonElement>('bgm-button'),el('bgm-status'),audio);
-const fileMusic=new FileMusicPlayer({party:el<HTMLAudioElement>('file-party-audio'),yes:el<HTMLAudioElement>('file-yes-audio'),poi:el<HTMLAudioElement>('file-poi-audio')},audio);
 const canvas=el<HTMLCanvasElement>('game-canvas');
 const ctx=canvas.getContext('2d')!;
 function resizeCanvas(){const dpr=Math.min(devicePixelRatio||1,2);canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);}
 resizeCanvas();window.addEventListener('resize',resizeCanvas);
 
-function updateMusic(){
-  titleMusic.setContext(state!=='result'&&!paused&&!document.hidden,audio.enabled);
-  fileMusic.setContext(audio.enabled,!document.hidden);
-}
-function updateSound(){el('sound-button').setAttribute('aria-pressed',String(audio.enabled));el('sound-button').setAttribute('aria-label',audio.enabled?'音をオフにする':'音をオンにする');el('sound-button').querySelector('span')!.textContent=audio.enabled?'ON':'OFF';updateMusic();}
-updateSound();
 function updateBest(){
   el('title-best').textContent=String(best).padStart(2,'0');el('result-best').textContent=String(best);
   el('checkpoint-start-button').hidden=best<10;el('alternate-retry-button').hidden=best<10;
@@ -117,14 +95,13 @@ function updateBest(){
 updateBest();
 function showScreen(name:'title'|'play'|'result'){
   for(const s of ['title','play','result'])el(`${s}-screen`).hidden=s!==name;
-  el('bgm-section').hidden=name!=='title';updateMusic();
   document.body.dataset.screen=name;
   window.scrollTo({top:0,left:0,behavior:'instant'});
 }
-function title(){fileMusic.stop();state='title';round=null;paused=false;el('pause-panel').hidden=true;showScreen('title');updateBest();el('start-button').focus({preventScroll:true});}
+function title(){state='title';round=null;paused=false;el('pause-panel').hidden=true;showScreen('title');updateBest();el('start-button').focus({preventScroll:true});}
 function begin(startStage:1|11=1){
   if(startStage===11&&best<10)return;
-  fileMusic.stop();audio.unlock();oldBest=best;runStart=startStage;cleared=startStage-1;bag=[];lastGame=null;paused=false;
+  oldBest=best;runStart=startStage;cleared=startStage-1;bag=[];lastGame=null;paused=false;
   el('pause-panel').hidden=true;el('share-fallback').hidden=true;nextRound();showScreen('play');
 }
 function nextRound(){
@@ -134,7 +111,7 @@ function nextRound(){
   }
   const id=bag.shift()!;lastGame=id;
   const m=missions.find(m=>m.id===id)!;
-  round=createRound(id,{finish:finishRound,sound:s=>audio.play(s),music:track=>fileMusic.play(track)},cleared+1);
+  round=createRound(id,{finish:finishRound},cleared+1);
   el('file-picker').hidden=id!=='files';el('file-picker').inert=true;
   el('file-list').replaceChildren(...(id==='files'?musicFiles.map((file,index)=>{
     const button=document.createElement('button');button.className='music-file';button.type='button';
@@ -166,7 +143,6 @@ function finishRound(ok:boolean,message:string){
   state='feedback';transitionTime=0;finalReason=message;
   el('file-picker').inert=true;
   if(ok){cleared++;if(cleared>best){best=cleared;try{localStorage.setItem('sennyu-best-v1',String(best));}catch{}}}
-  audio.play(ok?'good':'bad');
   if(!ok){endRun();return;}
   el('transition').className=`transition feedback ${ok?'success':'failure'}`;el('transition').hidden=false;
   el('transition-label').textContent='';
@@ -195,10 +171,9 @@ function endRun(failed=true){
 function setPaused(value:boolean){
   if(!['playing','briefing','feedback'].includes(state))return;
   paused=value;el('pause-panel').hidden=!value;el('pause-button').setAttribute('aria-label',value?'再開':'一時停止');
-  updateMusic();
   if(value)el('resume-button').focus({preventScroll:true});else canvas.focus({preventScroll:true});
 }
-function dispatch(action:string){if(state==='playing'&&!paused){audio.unlock();round?.action(action);}}
+function dispatch(action:string){if(state==='playing'&&!paused){round?.action(action);}}
 function updateControls(){
   if(!round)return;
   const controls=round.controls();const signature=JSON.stringify(controls);
@@ -240,7 +215,7 @@ function frame(now:number){
 requestAnimationFrame(frame);
 
 canvas.addEventListener('pointerdown',e=>{
-  if(state!=='playing'||paused)return;e.preventDefault();audio.unlock();
+  if(state!=='playing'||paused)return;e.preventDefault();
   const b=canvas.getBoundingClientRect();round?.pointer((e.clientX-b.left)/b.width*W,(e.clientY-b.top)/b.height*H);
 });
 canvas.addEventListener('pointermove',e=>{if(state!=='playing'||paused)return;const b=canvas.getBoundingClientRect();round?.move((e.clientX-b.left)/b.width*W,(e.clientY-b.top)/b.height*H);});
@@ -252,7 +227,7 @@ document.addEventListener('keydown',e=>{
   const action:Record<string,string>={Space:'primary',ArrowLeft:'left',ArrowRight:'right',ArrowUp:'up',ArrowDown:'down',Digit1:'choice-0',Digit2:'choice-1',Digit3:'choice-2',Digit4:'choice-3',Numpad1:'choice-0',Numpad2:'choice-1',Numpad3:'choice-2',Numpad4:'choice-3'};
   if(action[e.code]){e.preventDefault();if(!e.repeat)dispatch(action[e.code]);}
 });
-document.addEventListener('visibilitychange',()=>{if(document.hidden)setPaused(true);updateMusic();});
+document.addEventListener('visibilitychange',()=>{if(document.hidden)setPaused(true);});
 window.addEventListener('blur',()=>setPaused(true));
 el('start-button').onclick=()=>begin();el('checkpoint-start-button').onclick=()=>begin(11);
 el('retry-button').onclick=()=>begin(runStart);el('alternate-retry-button').onclick=()=>begin(runStart===11?1:11);
@@ -260,9 +235,6 @@ el('back-button').onclick=title;
 el('home-button').onclick=()=>{if(state==='title'||state==='result')title();else setPaused(true);};
 el('pause-button').onclick=()=>setPaused(!paused);el('resume-button').onclick=()=>setPaused(false);
 el('quit-button').onclick=()=>{finalReason='任務から帰還した。';endRun(false);};
-function setSound(enabled:boolean){audio.enabled=enabled;audio.unlock();updateSound();try{localStorage.setItem('sennyu-sound',audio.enabled?'on':'off');}catch{}}
-el('sound-button').onclick=()=>setSound(!audio.enabled);
-el('bgm-button').onclick=()=>{const requested=titleMusic.toggle();if(requested&&!audio.enabled)setSound(true);else audio.unlock();};
 el('help-button').onclick=()=>el<HTMLDialogElement>('help-dialog').showModal();
 el('close-help').onclick=()=>el<HTMLDialogElement>('help-dialog').close();
 el<HTMLDialogElement>('help-dialog').addEventListener('click',e=>{if(e.target===e.currentTarget){const b=(e.currentTarget as HTMLElement).getBoundingClientRect();if(e.clientX<b.left||e.clientX>b.right||e.clientY<b.top||e.clientY>b.bottom)el<HTMLDialogElement>('help-dialog').close();}});

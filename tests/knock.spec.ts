@@ -121,13 +121,13 @@ test.describe('memorize the paper authentication code',()=>{
     test(`opponent feint holds its turn through the silent gap: ${input}`,async({page})=>{
       await startKnock(page,true);
       await page.evaluate(async()=>{
-        const modulePath='/src/audio.ts';
-        const {Audio}=await import(/* @vite-ignore */ modulePath);
-        const play=Audio.prototype.play;
+        const modulePath='/src/games.ts';
+        const {Round}=await import(/* @vite-ignore */ modulePath);
+        const tick=Round.prototype.tick;
         Object.assign(window,{feintKnocks:[] as number[]});
-        Audio.prototype.play=function(kind:string){
-          if(kind==='tap')(window as any).feintKnocks.push(performance.now());
-          return play.call(this,kind);
+        Round.prototype.tick=function(dt:number){
+          this.api.sound=(kind:string)=>{if(kind==='tap')(window as any).feintKnocks.push(performance.now());};
+          return tick.call(this,dt);
         };
       });
       await page.clock.runFor(4000);

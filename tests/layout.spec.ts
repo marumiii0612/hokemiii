@@ -34,16 +34,15 @@ async function visibleControls(page:Page){
 }
 
 const sizes=[
-  {width:320,height:568,music:false},
-  {width:320,height:568,music:true},
-  {width:375,height:667,music:false},
-  {width:390,height:844,music:false},
-  {width:844,height:390,music:true},
-  {width:1280,height:720,music:false},
+  {width:320,height:568},
+  {width:375,height:667},
+  {width:390,height:844},
+  {width:844,height:390},
+  {width:1280,height:720},
 ];
 
 for(const size of sizes){
-  test.describe(`${size.width}×${size.height}${size.music?' with BGM':''}`,()=>{
+  test.describe(`${size.width}×${size.height}`,()=>{
     test.use({viewport:{width:size.width,height:size.height},hasTouch:true,isMobile:size.width<1000});
     test('all nine missions keep canvas and controls stationary in one viewport',async({page})=>{
       const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
@@ -62,10 +61,6 @@ for(const size of sizes){
       });
       const time=new Date('2026-10-24T12:00:00Z');
       await page.clock.install({time});await page.clock.pauseAt(new Date(time.getTime()+1000));
-      if(size.music){
-        await page.getByRole('button',{name:'BGMを再生',exact:true}).click();
-        await expect(page.locator('#bgm-status')).toContainText('再生中');
-      }
       await page.evaluate(()=>window.scrollTo(0,1000));
       await page.getByRole('button',{name:'はじめる',exact:true}).click();
       const initial=await visibleControls(page);
@@ -85,17 +80,7 @@ for(const size of sizes){
         }
         const current=await visibleControls(page);
         expect(current.canvas).toEqual(initial.canvas);expect(current.controls).toEqual(initial.controls);
-        if(size.music){
-          await expect(page.locator('#bgm-audio')).toBeHidden();
-          await expect(page.locator('#bgm-section')).toBeHidden();
-        }
         if(stage===1){
-          await page.locator('#bgm-button').click();await page.clock.runFor(50);
-          const toggled=await visibleControls(page);
-          expect(toggled.canvas).toEqual(initial.canvas);expect(toggled.controls).toEqual(initial.controls);
-          await page.locator('#bgm-button').click();await page.clock.runFor(50);
-          const restored=await visibleControls(page);
-          expect(restored.canvas).toEqual(initial.canvas);expect(restored.controls).toEqual(initial.controls);
           await page.mouse.wheel(0,500);await page.clock.runFor(100);
           const afterScroll=await visibleControls(page);
           expect(afterScroll.canvas).toEqual(initial.canvas);expect(afterScroll.controls).toEqual(initial.controls);

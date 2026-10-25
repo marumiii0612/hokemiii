@@ -18,13 +18,5 @@ for (const match of html.matchAll(/<link\b[^>]*rel="stylesheet"[^>]*href="([^"]+
 
 const icon = await readFile(new URL('favicon.svg', dist));
 html = html.replace('href="/favicon.svg"', () => `href="data:image/svg+xml;base64,${icon.toString('base64')}"`);
-// Pages streams the local MP3 on demand; the downloadable file includes it for offline play.
-await writeFile(new URL('pages.html', dist), html);
-for (const name of ['main', 'party', 'yes', 'poi']) {
-  const music = await readFile(new URL(`audio/${name}.mp3`, dist));
-  const musicReference = `src="./audio/${name}.mp3"`;
-  if (!html.includes(musicReference)) throw new Error(`Missing ${name} audio reference in standalone HTML`);
-  html = html.replace(musicReference, () => `src="data:audio/mpeg;base64,${music.toString('base64')}"`);
-}
 await writeFile(new URL('play.html', dist), html);
 console.log(`Standalone game: dist/play.html (${Buffer.byteLength(html)} bytes)`);

@@ -1,11 +1,11 @@
 import japan from './data/japan.json';
 import okinawa from './data/okinawa.json';
-import {musicFiles,type FileMusic} from './music-files';
+import {musicFiles} from './music-files';
 import { C, W, H, rect, text, line, circle, grid, cross, person, vignette, rand, pick, shuffle } from './draw';
 
 export type GameId = 'knife' | 'map' | 'knock' | 'laser' | 'aim' | 'memory' | 'chase' | 'eat' | 'files';
 export type Control = { label: string; action: string; key?: string };
-type Api = { finish: (ok: boolean, message: string) => void; sound: (kind: 'tap'|'shoot'|'warning') => void; music?: (track:FileMusic)=>void };
+type Api = { finish: (ok: boolean, message: string) => void; sound?: (kind: 'tap'|'shoot'|'warning') => void };
 export const missions: { id: GameId; title: string; sub: string; icon: string }[] = [
   {id:'knife',title:'刺せ',sub:'バナナが中央に来たら、ナイフを投げろ。チャンスは一度。',icon:'↟'},
   {id:'map',title:'見つけろ',sub:'日本地図の間違いを見つけて、その場所をタップ。',icon:'⌖'},
@@ -57,7 +57,7 @@ class Knife extends Round {
     if(this.bx>800)this.end(false,'バナナを見送ってしまった。');
   }
   controls() { return [{label:'投げる',action:'primary',key:'SPACE'}]; }
-  action(s:string) { if(s==='primary'&&!this.thrown&&!this.ended){ this.thrown=true; this.api.sound('shoot'); } }
+  action(s:string) { if(s==='primary'&&!this.thrown&&!this.ended){ this.thrown=true; this.api.sound?.('shoot'); } }
   pointer() { this.action('primary'); }
   draw(c: CanvasRenderingContext2D) {
     rect(c,0,0,W,H,'#202a25'); grid(c,60,'#2b3730');
@@ -158,7 +158,7 @@ class Knock extends Round {
     const autoInterval=(this.turn===this.feintTurn&&this.taps===this.code[this.turn]-1?1.05:.32)/this.speed;
     if(this.turn%2&&this.elapsed-this.lastAuto>autoInterval){this.lastAuto=this.elapsed;this.knock();}
   }
-  private knock(){this.taps++;this.api.sound('tap');this.ripples.push(0);if(this.taps===this.code[this.turn])this.delay=.55/this.speed;}
+  private knock(){this.taps++;this.api.sound?.('tap');this.ripples.push(0);if(this.taps===this.code[this.turn])this.delay=.55/this.speed;}
   action(s:string){
     if(s!=='primary'||!this.knocking||this.ended)return;
     if(this.turn%2){this.end(false,'相手の応答中にノックした。');return;}
@@ -296,7 +296,7 @@ class Laser extends Round {
     if(this.ended)return;
     if(s==='left')this.lane=Math.max(0,this.lane-1);
     if(s==='right')this.lane=Math.min(this.lanes.length-1,this.lane+1);
-    if(['jump','up','primary'].includes(s)&&!this.jumping){this.jumping=true;this.jumpTime=0;this.api.sound('tap');}
+    if(['jump','up','primary'].includes(s)&&!this.jumping){this.jumping=true;this.jumpTime=0;this.api.sound?.('tap');}
   }
   pointer(x:number){this.action(x<240?'left':x>480?'right':'jump');}
   private get firing(){return this.wave>=0&&this.phase>(this.groundLaser ? .45 : .57)&&this.phase<(this.groundLaser ? .65 : .77);}
@@ -316,7 +316,7 @@ class Laser extends Round {
       const combined=this.groundLaser&&this.loop>0&&(w%4===3||this.loop>1);
       this.danger=!this.groundLaser||combined?shuffle([0,1,2,3]).slice(0,this.loop>0?2:1):[];
       this.hint=combined?'縦線をよけながらジャンプ。左右移動＋中央タップ / ↑・Space':this.groundLaser?'下の横レーザーはジャンプ。中央タップ / ↑・Space':'縦レーザーは左右によける。左右タップ / ← →';
-      this.api.sound('warning');
+      this.api.sound?.('warning');
     }
     if(this.phase>=1){this.hint='次の予告を待て。';return;}
     if(this.firing){
@@ -400,7 +400,7 @@ class Aim extends Round {
   pointer(){this.action('primary');}
   action(s:string){
     if(s!=='primary'||this.ended||this.shot)return;
-    this.shot=true;this.api.sound('shoot');
+    this.shot=true;this.api.sound?.('shoot');
   }
   draw(c:CanvasRenderingContext2D){
     rect(c,0,0,W,H,'#172724');grid(c,40,'#223732');
@@ -568,7 +568,7 @@ class Eat extends Round {
   constructor(api:Api,stage:number){super(api,stage);this.duration=5.5/this.speed;}
   controls(){return[{label:'食べる',action:'primary',key:'SPACE'}];}
   action(s:string){
-    if(s!=='primary'||this.ended)return;this.portions++;this.bite=.2;this.api.sound('tap');
+    if(s!=='primary'||this.ended)return;this.portions++;this.bite=.2;this.api.sound?.('tap');
     for(let i=0;i<7;i++)this.grains.push({x:360,y:375,vx:(Math.random()-.5)*220,vy:-80-Math.random()*150,life:.55});
     if(this.portions>=10){
       if(this.loop>0)this.flyingServingAge=0;
@@ -640,8 +640,7 @@ class Files extends Round {
     if(this.ended||!/^file-\d+$/.test(value))return;
     const file=musicFiles[Number(value.slice(5))];
     if(!file)return;
-    if(file.music===null){this.end(true,'');return;}
-    this.api.music?.(file.music);this.end(false,'');
+    this.end(file.correct,'');
   }
   draw(c:CanvasRenderingContext2D){
     rect(c,0,0,W,H,'#101820');

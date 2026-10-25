@@ -1,100 +1,71 @@
 import {test,expect,type Page} from '@playwright/test';
+import {watchAudioActivity,audioActivity} from './helpers';
 
 const names=['ayaman.mp3','beppan.mp3','karaoketeppan.mp3','pazyama.mp3','pazyama仮.mp3','pazyama最終.mp3','peppan.mp3','poipoi.mp3','tokyo.mp3','yestokyo.mp3'];
 
-async function startFiles(page:Page,bgm=true){
+async function startFiles(page:Page){
+  await watchAudioActivity(page);
   await page.addInitScript(()=>{
     let sample=0;
     // Put Files first in the nine-mission shuffle.
     Math.random=()=>{sample++;return sample>=2&&sample<=8?.999:0;};
     localStorage.setItem('sennyu-best-v1','10');
-    const play=HTMLMediaElement.prototype.play;
-    Object.assign(window,{filePlayCalls:[] as string[]});
-    HTMLMediaElement.prototype.play=function(){(window as any).filePlayCalls.push(this.id);return play.call(this);};
   });
   await page.goto('/');
-  if(bgm){await page.getByRole('button',{name:'BGMを再生',exact:true}).click();await expect(page.locator('#bgm-status')).toContainText('再生中');}
   const time=new Date('2026-10-25T15:00:00Z');await page.clock.install({time});await page.clock.pauseAt(new Date(time.getTime()+1000));
   await page.getByRole('button',{name:'はじめる',exact:true}).click();
   await expect(page.locator('#stage-number')).toHaveText('01');await expect(page.locator('#transition-title')).toHaveText('鳴らせ。');
   await page.clock.runFor(1300);await expect(page.locator('#transition')).toBeHidden();await expect(page.locator('#file-picker')).toBeVisible();
 }
-async function audioState(page:Page){
-  return page.evaluate(()=>({
-    main:document.querySelector<HTMLAudioElement>('#bgm-audio')!.paused,
-    tracks:Object.fromEntries(['party','yes','poi'].map(name=>{
-      const track=document.querySelector<HTMLAudioElement>(`#file-${name}-audio`)!;
-      return[name,{paused:track.paused,src:track.currentSrc,duration:track.duration,loop:track.loop,time:track.currentTime}];
-    })),
-    plays:(window as any).filePlayCalls as string[],
-  }));
-}
-
-test.describe('鳴らせ file picker and uploaded music',()=>{
+test.describe('silent 鳴らせ file picker',()=>{
   test.use({viewport:{width:320,height:568},isMobile:true,hasTouch:true});
 
-  test('the alphabetical list has usable touch rows, and beppan keeps the same main BGM through success',async({page})=>{
+  test('the alphabetical list has usable touch rows, and beppan succeeds without audio',async({page})=>{
     const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));await startFiles(page);
     await expect(page.locator('.music-file > span:last-child')).toHaveText(names);
     const rows=await page.locator('.music-file').all();
     for(const row of rows)expect((await row.boundingBox())!.height).toBeGreaterThanOrEqual(44);
-    const before=await audioState(page),canvas=await page.locator('#game-canvas').boundingBox();
+    const canvas=await page.locator('#game-canvas').boundingBox();
     await page.screenshot({path:'/tmp/hokemi-files-mobile.png'});
     await page.getByRole('button',{name:'beppan.mp3',exact:true}).tap();
     await expect(page.locator('#transition-title')).toHaveText('任務完了');await expect(page.locator('#result-screen')).toBeHidden();
-    const after=await audioState(page);expect(after.main).toBe(false);expect(after.plays).toEqual(before.plays);
-    expect(Object.values(after.tracks).every(track=>track.paused)).toBe(true);
+    expect(await audioActivity(page)).toEqual({contexts:0,elements:0,plays:0});
     expect(await page.locator('#game-canvas').boundingBox()).toEqual(canvas);
     await page.clock.runFor(1500);await expect(page.locator('#stage-number')).toHaveText('02');
-    await expect(page.locator('#file-picker')).toBeHidden();expect((await audioState(page)).main).toBe(false);expect(errors).toEqual([]);
+    await expect(page.locator('#file-picker')).toBeHidden();expect(errors).toEqual([]);
   });
 
   for(const scenario of [
-    {name:'pazyama.mp3',track:'party',bgm:true,home:false},
-    {name:'yestokyo.mp3',track:'yes',bgm:true,home:true},
-    {name:'poipoi.mp3',track:'poi',bgm:false,home:false},
-    {name:'peppan.mp3',track:'poi',bgm:true,home:false},
+    {name:'pazyama.mp3',home:false},
+    {name:'yestokyo.mp3',home:true},
   ]){
-    test(`${scenario.name} fails, plays ${scenario.track} through the result, and stops on navigation`,async({page})=>{
-      const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));await startFiles(page,scenario.bgm);
+    test(`${scenario.name} fails silently and supports immediate navigation`,async({page})=>{
+      const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));await startFiles(page);
       await page.getByRole('button',{name:scenario.name,exact:true}).tap();await expect(page.locator('#result-screen h1')).toHaveText('任務失敗。');
       await expect(page.locator('#final-score')).toHaveText('0');await expect(page.locator('#result-message')).toBeEmpty();
-      const track=page.locator(`#file-${scenario.track}-audio`);
-      await expect.poll(()=>track.evaluate((audio:HTMLAudioElement)=>audio.readyState>=2&&!audio.paused)).toBe(true);
-      const failed=await audioState(page);expect(failed.main).toBe(true);expect(failed.tracks[scenario.track].loop).toBe(true);
-      expect(failed.tracks[scenario.track].src).toContain(`/audio/${scenario.track}.mp3`);
-      for(const [name,audio] of Object.entries(failed.tracks))if(name!==scenario.track)expect(audio.paused).toBe(true);
-      await page.clock.runFor(3000);expect((await audioState(page)).tracks[scenario.track].paused).toBe(false);
-      if(scenario.name==='peppan.mp3'){
-        await page.getByRole('button',{name:'音をオフにする',exact:true}).tap();expect((await audioState(page)).tracks.poi.paused).toBe(true);
-        await page.getByRole('button',{name:'音をオンにする',exact:true}).tap();await expect.poll(async()=>(await audioState(page)).tracks.poi.paused).toBe(false);
-      }
+      await page.clock.runFor(3000);await expect(page.locator('audio,video')).toHaveCount(0);
       await page.getByRole('button',{name:scenario.home?'タイトルへ戻る':'11からリスタート',exact:true}).tap();
-      expect(Object.values((await audioState(page)).tracks).every(audio=>audio.paused)).toBe(true);
-      if(scenario.bgm)await expect.poll(async()=>(await audioState(page)).main).toBe(false);
-      else expect((await audioState(page)).main).toBe(true);
+      expect(await audioActivity(page)).toEqual({contexts:0,elements:0,plays:0});
       expect(await page.evaluate(()=>scrollY)).toBe(0);expect(errors).toEqual([]);
     });
   }
 });
 
-test('every filename has exactly its requested outcome and music, with no repeated selection after ending',async({page})=>{
+test('every filename keeps its requested outcome without a repeated selection after ending',async({page})=>{
   await page.goto('/');
   const outcomes=await page.evaluate(async()=>{
     const gamesPath='/src/games.ts',filesPath='/src/music-files.ts';
     const {createRound}=await import(/* @vite-ignore */ gamesPath),{musicFiles}=await import(/* @vite-ignore */ filesPath);
     return musicFiles.map((file:{name:string},index:number)=>{
-      const finish:boolean[]=[],music:string[]=[];
-      const game=createRound('files',{finish:(ok:boolean)=>finish.push(ok),sound:()=>{},music:(track:string)=>music.push(track)},15);
+      const finish:boolean[]=[];
+      const game=createRound('files',{finish:(ok:boolean)=>finish.push(ok)},15);
       game.action('primary');game.action('file-999');
-      if(finish.length||music.length)throw new Error('Invalid selections must be ignored');
+      if(finish.length)throw new Error('Invalid selections must be ignored');
       game.action(`file-${index}`);game.action(`file-${(index+1)%musicFiles.length}`);
-      return{name:file.name,finish,music};
+      return{name:file.name,finish};
     });
   });
-  expect(outcomes).toEqual(names.map(name=>({name,finish:[name==='beppan.mp3'],music:name==='beppan.mp3'?[]:[
-    name.startsWith('pazyama')?'party':['tokyo.mp3','yestokyo.mp3','karaoketeppan.mp3'].includes(name)?'yes':'poi',
-  ]})));
+  expect(outcomes).toEqual(names.map(name=>({name,finish:[name==='beppan.mp3']})));
 });
 
 test('all nine missions appear once per shuffled loop, with speed changing after nine clears',async({page})=>{

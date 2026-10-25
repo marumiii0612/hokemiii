@@ -1,5 +1,5 @@
 import { test, expect, type Page } from '@playwright/test';
-import { tapCanvas } from './helpers';
+import { tapCanvas,watchAudioActivity,audioActivity } from './helpers';
 
 async function deterministic(page:Page){
   await page.addInitScript(()=>{Math.random=()=>0;});
@@ -171,6 +171,7 @@ for(const cleared of [40,41]){
 
 test('complete nine real missions, then accelerate the second loop',async({page})=>{
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));
+  await watchAudioActivity(page);
   await deterministic(page);await page.clock.install();
   await page.getByRole('button',{name:'はじめる',exact:true}).click();
   await page.clock.runFor(1300);
@@ -237,6 +238,7 @@ test('complete nine real missions, then accelerate the second loop',async({page}
   await expect(page.locator('#stage-number')).toHaveText('10');
   await expect(page.locator('#loop-label')).toHaveText('LOOP 02');
   await expect(page.locator('#speed-label')).toHaveText('SPEED ×1.20');
+  expect(await audioActivity(page)).toEqual({contexts:0,elements:0,plays:0});
   expect(errors).toEqual([]);
 });
 
