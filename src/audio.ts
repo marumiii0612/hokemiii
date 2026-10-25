@@ -21,6 +21,16 @@ export class Audio {
       if(this.ctx.state!=='running'&&this.ctx.state!=='closed')void this.ctx.resume().catch(()=>{});
     } catch { /* Audio is optional. */ }
   }
+  connectMusic(media:HTMLMediaElement):GainNode|undefined {
+    this.unlock();
+    if(!this.ctx)return;
+    try{
+      const gain=this.ctx.createGain();
+      this.ctx.createMediaElementSource(media).connect(gain);
+      // Keep music outside the effects compressor so loud SE do not change its volume.
+      gain.connect(this.ctx.destination);return gain;
+    }catch{return;}
+  }
   play(kind: Tone) {
     if (!this.enabled || !this.ctx) return;
     const ac=this.ctx, at=ac.currentTime;

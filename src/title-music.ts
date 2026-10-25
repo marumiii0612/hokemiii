@@ -1,130 +1,75 @@
-type Player={getVolume:()=>number;setVolume:(volume:number)=>void;playVideo:()=>void;pauseVideo:()=>void;destroy:()=>void;getIframe:()=>HTMLIFrameElement};
-type PlayerEvent={target:Player;data?:number};
-type PlayerOptions={
-  videoId:string;width:string;height:number;host:string;playerVars:Record<string,string|number>;
-  events:{onReady:(event:PlayerEvent)=>void;onStateChange:(event:PlayerEvent)=>void;onError:()=>void;onAutoplayBlocked:()=>void};
-};
-declare global {
-  interface Window {
-    YT?:{Player:new(element:HTMLElement,options:PlayerOptions)=>Player};
-    onYouTubeIframeAPIReady?:()=>void;
-  }
-}
+import type {Audio} from './audio';
 
-const VIDEO_ID='MuGFcUggtDs';
-const MUSIC_VOLUME=8;
+const MUSIC_VOLUME=.08;
 
 export class TitleMusic {
-  private player?:Player;
-  private ready=false;
-  private loading=false;
   private requested=false;
   private active=true;
   private enabled=true;
   private blocked=false;
-  private playing=false;
   private starting=false;
-  private volumeTimer?:number;
-  private timer?:number;
-  private script?:HTMLScriptElement;
   private generation=0;
-  constructor(private panel:HTMLElement,private host:HTMLElement,private button:HTMLButtonElement,private status:HTMLElement){}
+  private gain?:GainNode;
+
+  constructor(private panel:HTMLElement,private track:HTMLAudioElement,private button:HTMLButtonElement,
+    private status:HTMLElement,private sound:Audio){
+    this.track.addEventListener('playing',()=>{
+      if(!this.canPlay()){this.track.pause();return;}
+      this.blocked=false;this.status.textContent='BGMを小さく再生中';this.render();
+    });
+    this.track.addEventListener('volumechange',()=>this.keepVolume());
+    this.track.addEventListener('error',()=>this.fail());
+  }
 
   toggle(){
     this.requested=this.blocked||!this.requested;this.blocked=false;
-    if(this.requested){
-      this.panel.hidden=false;
-      if(!this.ready&&!this.loading)this.load();
-    }
+    this.panel.hidden=!this.requested;
+    if(this.requested&&this.track.error)this.track.load();
     this.sync();
-    if(!this.requested){this.panel.hidden=true;this.render();}
     return this.requested;
   }
   setContext(active:boolean,enabled:boolean){this.active=active;this.enabled=enabled;this.sync();}
+  private canPlay(){return this.requested&&this.active&&this.enabled;}
   private render(){
     const action=this.requested&&!this.blocked?'BGMを停止':'BGMを再生';
     this.button.setAttribute('aria-label',action);this.button.title=action;
     this.button.setAttribute('aria-pressed',String(this.requested));
   }
+  private keepVolume(){
+    // A Web Audio gain also controls volume on mobile Safari, which ignores media.volume.
+    const volume=this.gain?1:MUSIC_VOLUME;
+    if(this.gain)this.gain.gain.value=MUSIC_VOLUME;
+    if(this.track.volume!==volume)this.track.volume=volume;
+  }
   private sync(){
     this.render();
-    if(!this.ready||!this.player)return;
-    if(this.requested&&this.active&&this.enabled){
-      this.keepVolume();
-      if(!this.playing&&!this.starting){this.starting=true;this.player.playVideo();}
-    }
-    else{
-      this.playing=false;this.starting=false;this.stopVolumeCheck();
-      this.player.pauseVideo();
+    if(!this.canPlay()){
+      this.generation++;this.starting=false;this.track.pause();
       this.status.textContent=this.requested?'BGMは一時停止中です。':'BGMを停止しました。';
+      return;
     }
-  }
-  private keepVolume(){
-    if(this.player&&this.player.getVolume()!==MUSIC_VOLUME)this.player.setVolume(MUSIC_VOLUME);
-  }
-  private stopVolumeCheck(){window.clearInterval(this.volumeTimer);this.volumeTimer=undefined;}
-  private startVolumeCheck(){
-    if(this.volumeTimer!==undefined)return;
-    this.volumeTimer=window.setInterval(()=>{
-      if(this.playing&&this.requested&&this.active&&this.enabled)this.keepVolume();
-    },500);
-  }
-  private load(){
+    this.sound.unlock();
+    this.gain??=this.sound.connectMusic(this.track);
+    this.keepVolume();
+    if(this.starting||!this.track.paused)return;
     const generation=++this.generation;
-    this.loading=true;this.status.textContent='BGMを読み込んでいます…';
-    this.timer=window.setTimeout(()=>{if(generation===this.generation)this.fail();},15000);
-    if(window.YT?.Player){this.createPlayer();return;}
-    window.onYouTubeIframeAPIReady=()=>this.createPlayer();
-    this.script?.remove();
-    this.script=document.createElement('script');this.script.src='https://www.youtube.com/iframe_api';
-    this.script.onerror=()=>{if(generation===this.generation)this.fail();};document.head.append(this.script);
-  }
-  private createPlayer(){
-    if(!this.loading||this.player||!window.YT?.Player)return;
-    const mount=document.createElement('div');this.host.replaceChildren(mount);
-    const generation=this.generation;
-    try{
-      this.player=new window.YT.Player(mount,{
-        videoId:VIDEO_ID,width:'100%',height:203,host:'https://www.youtube-nocookie.com',
-        playerVars:{autoplay:0,controls:1,playsinline:1,loop:1,playlist:VIDEO_ID,rel:0,fs:0,disablekb:1,
-          ...(/^https?:$/.test(location.protocol)?{origin:location.origin}:{})},
-        events:{
-          onReady:({target})=>{
-            if(generation!==this.generation)return;
-            this.player=target;this.ready=true;this.loading=false;window.clearTimeout(this.timer);
-            const frame=target.getIframe();frame.title='BGM — YouTube';
-            frame.allow='autoplay; encrypted-media; picture-in-picture';frame.referrerPolicy='strict-origin-when-cross-origin';
-            this.status.textContent='小さめの音量で再生します。';this.sync();
-          },
-          onStateChange:({data})=>{
-            if(generation!==this.generation)return;
-            if(data===0||data===2){this.playing=false;this.starting=false;this.stopVolumeCheck();}
-            if(data===2&&this.active&&this.enabled&&this.requested){
-              this.blocked=true;this.status.textContent='BGMは一時停止中です。';this.render();return;
-            }
-            if(data!==1)return;
-            if(!this.active||!this.enabled||!this.requested){
-              this.playing=false;this.starting=false;this.stopVolumeCheck();this.player?.pauseVideo();return;
-            }
-            this.starting=false;this.playing=true;this.keepVolume();this.startVolumeCheck();
-            this.blocked=false;this.status.textContent='BGMを小さく再生中';this.render();
-          },
-          onAutoplayBlocked:()=>{
-            if(generation!==this.generation)return;
-            this.playing=false;this.starting=false;this.stopVolumeCheck();
-            this.blocked=true;this.status.textContent='BGMの再生ボタンをもう一度タップしてください。';this.render();
-          },
-          onError:()=>{if(generation===this.generation)this.fail();},
-        },
-      });
-    }catch{this.fail();}
+    this.starting=true;this.status.textContent='BGMを読み込んでいます…';
+    void this.track.play().then(()=>{
+      if(generation!==this.generation)return;
+      this.starting=false;
+      if(!this.canPlay()){this.track.pause();return;}
+      this.blocked=false;this.status.textContent='BGMを小さく再生中';this.render();
+    }).catch(error=>{
+      if(generation!==this.generation)return;
+      this.starting=false;
+      if(!this.canPlay())return;
+      if(error?.name==='NotAllowedError'||error?.name==='AbortError'){
+        this.blocked=true;this.status.textContent='BGMの再生ボタンをもう一度タップしてください。';this.render();
+      }else this.fail();
+    });
   }
   private fail(){
-    this.generation++;
-    this.playing=false;this.starting=false;this.stopVolumeCheck();
-    window.clearTimeout(this.timer);this.loading=false;this.ready=false;this.requested=false;this.blocked=false;
-    try{this.player?.destroy();}catch{/* The game remains usable if YouTube is unavailable. */}
-    this.player=undefined;this.host.replaceChildren();
-    this.status.textContent='BGMを再生できませんでした。下のリンクからYouTubeで開けます。';this.render();
+    this.generation++;this.starting=false;this.requested=false;this.blocked=false;
+    this.track.pause();this.status.textContent='BGMを再生できませんでした。♪をタップして再試行できます。';this.render();
   }
 }

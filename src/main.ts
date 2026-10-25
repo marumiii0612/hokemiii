@@ -67,13 +67,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
     <section id="bgm-section" aria-label="BGM">
       <div id="title-bgm-panel" class="title-bgm-panel" hidden>
         <p id="bgm-status" class="bgm-status" role="status"></p>
-        <a class="bgm-source" href="https://youtu.be/MuGFcUggtDs" target="_blank" rel="noreferrer">この曲をYouTubeで開く ↗</a>
       </div>
     </section>
     <footer class="site-footer"><span>FICTIONAL OPERATIONS BUREAU</span><span>EST. 2026 <i>●</i> JP</span></footer>
   </div>
-  <div id="title-bgm-player" class="bgm-audio-player" aria-hidden="true" inert></div>
-  <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-header"><span class="eyebrow">FIELD MANUAL</span><button id="close-help" class="icon-button" aria-label="遊び方を閉じる">×</button></div><h2 id="help-title">任務の手引き<span>。</span></h2><p class="help-intro">ランダムに続く8つのミニゲーム。<br>制限時間内に成功させ、自己最高記録を目指せ。</p><div class="mission-list">${missions.map(m=>`<div class="manual-mission"><span>${m.icon}</span><div><h3>${m.title}</h3><p>${m.sub}</p></div></div>`).join('')}</div><div class="manual-note"><p>ミスするまでステージは続き、40クリアまでは任務失敗、41クリア以上は殉職。8ステージごとに1周し、2周目は1.2倍、3周目は1.4倍と加速（最大2.4倍）。20クリアで21からの再開を解放。記録はこの端末に保存されます。</p><p>PC：画面クリック・Space・矢印キー・数字1〜4。P / Escで一時停止。スマホ：画面または操作ボタンをタップ。</p></div><details><summary>このゲームについて・地図の出典</summary><p>VIVANTに着想を得た、非公式のオリジナルファンゲームです。作品の画像・俳優の肖像は使用していません。タイトルBGMはYouTubeの埋め込み再生、記憶写真はオリジナルイラストです。</p><p>日本地図：国土地理院「地球地図日本」。dataofjapan/land の地理データを簡略化して使用。一部の島嶼は省略しています。地図データの利用条件は <a href="https://github.com/dataofjapan/land" target="_blank" rel="noreferrer">配布元</a> を参照してください。</p></details></dialog>
+  <audio id="bgm-audio" src="./audio/main.mp3" preload="none" loop hidden></audio>
+  <dialog id="help-dialog" aria-labelledby="help-title"><div class="dialog-header"><span class="eyebrow">FIELD MANUAL</span><button id="close-help" class="icon-button" aria-label="遊び方を閉じる">×</button></div><h2 id="help-title">任務の手引き<span>。</span></h2><p class="help-intro">ランダムに続く8つのミニゲーム。<br>制限時間内に成功させ、自己最高記録を目指せ。</p><div class="mission-list">${missions.map(m=>`<div class="manual-mission"><span>${m.icon}</span><div><h3>${m.title}</h3><p>${m.sub}</p></div></div>`).join('')}</div><div class="manual-note"><p>ミスするまでステージは続き、40クリアまでは任務失敗、41クリア以上は殉職。8ステージごとに1周し、2周目は1.2倍、3周目は1.4倍と加速（最大2.4倍）。20クリアで21からの再開を解放。記録はこの端末に保存されます。</p><p>PC：画面クリック・Space・矢印キー・数字1〜4。P / Escで一時停止。スマホ：画面または操作ボタンをタップ。</p></div><details><summary>このゲームについて・地図の出典</summary><p>VIVANTに着想を得た、非公式のオリジナルファンゲームです。作品の画像・俳優の肖像は使用していません。BGMは提供された音声ファイル、記憶写真はオリジナルイラストです。</p><p>日本地図：国土地理院「地球地図日本」。dataofjapan/land の地理データを簡略化して使用。一部の島嶼は省略しています。地図データの利用条件は <a href="https://github.com/dataofjapan/land" target="_blank" rel="noreferrer">配布元</a> を参照してください。</p></details></dialog>
   <div id="toast" class="toast" role="status" hidden></div>
 `;
 
@@ -86,7 +85,7 @@ let round:Round|null=null, bag:GameId[]=[], lastGame:GameId|null=null;
 let cleared=0,paused=false,transitionTime=0,controlSignature='',lastHint='',oldBest=best;
 let runStart:1|21=1;
 let finalReason='',lastFrame=performance.now(),toastTimer=0;
-const titleMusic=new TitleMusic(el('title-bgm-panel'),el('title-bgm-player'),el<HTMLButtonElement>('bgm-button'),el('bgm-status'));
+const titleMusic=new TitleMusic(el('title-bgm-panel'),el<HTMLAudioElement>('bgm-audio'),el<HTMLButtonElement>('bgm-button'),el('bgm-status'),audio);
 const canvas=el<HTMLCanvasElement>('game-canvas');
 const ctx=canvas.getContext('2d')!;
 function resizeCanvas(){const dpr=Math.min(devicePixelRatio||1,2);canvas.width=W*dpr;canvas.height=H*dpr;ctx.setTransform(dpr,0,0,dpr,0,0);}

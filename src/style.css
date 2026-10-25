@@ -102,11 +102,8 @@ dialog{background:#192018;color:var(--paper);border:1px solid #5c6346;width:580p
 .controls.three { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .music-button { width: 36px; height: 44px; font-size: 24px; border: 0; }
 .music-button[aria-pressed="true"] { color: var(--gold); }
-.bgm-audio-player { position: fixed; top: 0; left: 0; width: 200px; height: 203px; visibility: hidden; pointer-events: none; }
-.bgm-audio-player iframe { display: block; width: 200px; height: 203px; border: 0; }
 .title-bgm-panel { position: relative; z-index: 1; width: 100%; max-width: 360px; margin: 0 auto 24px; border: 1px solid var(--line); background: var(--panel); }
 .bgm-status { font-size: 11px; line-height: 1.8; margin: 12px 14px 6px; color: var(--muted); text-wrap: balance; }
-.bgm-source { display: inline-block; padding: 6px 14px 14px; font-size: 11px; color: var(--gold); }
 @media (max-width: 640px) {
   .title-content { padding: 58px 0 50px; }
   .header-right { gap: 4px; }

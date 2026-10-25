@@ -11,7 +11,8 @@ dataofjapan/land の配布時の説明では、非営利目的には出典元（
 
 記録写真は本ゲーム用のオリジナルイラストです。
 
-## タイトルBGM
+## BGM
 
-- 動画：<https://youtu.be/MuGFcUggtDs>
-- YouTubeの公式埋め込みプレーヤーで再生します。音声・動画データの抽出やゲームへの同梱は行っていません。再生にはインターネット接続と動画側の埋め込み許可が必要です。
+- ユーザー提供ファイル：`main.mp3`（`public/audio/main.mp3`、公開版は `docs/audio/main.mp3`）。提供されたファイルを変更せず使用しています。
+- ファイル内の作品情報：VIVANT ᐸMain themeᐳ／千住明、TBS系 日曜劇場「VIVANT」ORIGINAL SOUNDTRACK、℗ 2023 Anchor Records。
+- ブラウザの音声プレーヤーでループ再生し、失敗・任務終了時に停止します。YouTubeのプレーヤーや外部配信サービスは使用しません。

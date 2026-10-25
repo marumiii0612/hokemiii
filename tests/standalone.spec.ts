@@ -19,16 +19,24 @@ test('standalone HTML needs no external assets and supports failure, restart and
   await page.goto(url);
   await expect(page.getByRole('button', { name: 'はじめる', exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.getByRole('button', { name: 'BGMを再生', exact: true }).click();
+  await expect(page.locator('#bgm-status')).toContainText('再生中');
+  const music = await page.locator('#bgm-audio').evaluate((media: HTMLAudioElement) => ({
+    embedded: media.currentSrc.startsWith('data:audio/mpeg;base64,'), paused: media.paused, duration: media.duration,
+  }));
+  expect(music.embedded).toBe(true);expect(music.paused).toBe(false);expect(music.duration).toBeCloseTo(275.51, 1);
 
   await page.getByRole('button', { name: 'はじめる', exact: true }).click();
   await expect(page.locator('#transition')).toBeHidden();
   await expect(page.locator('#controls')).toBeHidden();
   await tapCanvas(page, 512, 135);
   await expect(page.locator('#result-screen h1')).toHaveText('任務失敗。');
+  expect(await page.locator('#bgm-audio').evaluate((media: HTMLAudioElement) => media.paused)).toBe(true);
   await expect(page.locator('#result-message')).toBeEmpty();
   await expect(page.locator('#result-message')).toBeHidden();
   await expect(page.locator('#result-screen')).not.toContainText('四国');
   await page.getByRole('button', { name: 'もう一度、潜入する' }).click();
+  await expect(page.locator('#bgm-status')).toContainText('再生中');
   await expect(page.locator('#transition')).toBeHidden();
   await tapCanvas(page, 330, 336);
   await expect(page.locator('#transition-title')).toHaveText('任務完了');

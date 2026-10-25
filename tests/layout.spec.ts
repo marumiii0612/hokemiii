@@ -49,20 +49,6 @@ for(const size of sizes){
       const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));
       await page.addInitScript(()=>{
         Math.random=()=>0;
-        // Check the BGM lifecycle without depending on YouTube's network availability.
-        (window as any).YT={Player:class{
-          frame:HTMLIFrameElement;
-          constructor(element:HTMLElement,private options:any){
-            this.frame=document.createElement('iframe');this.frame.srcdoc='BGM test player';element.replaceWith(this.frame);
-            setTimeout(()=>options.events.onReady({target:this}),0);
-          }
-          setVolume(){}
-          getVolume(){return 8;}
-          playVideo(){this.options.events.onStateChange({data:1});}
-          pauseVideo(){}
-          destroy(){this.frame.remove();}
-          getIframe(){return this.frame;}
-        }};
       });
       await page.goto('/');
       await page.evaluate(async()=>{
@@ -100,7 +86,7 @@ for(const size of sizes){
         const current=await visibleControls(page);
         expect(current.canvas).toEqual(initial.canvas);expect(current.controls).toEqual(initial.controls);
         if(size.music){
-          await expect(page.locator('#title-bgm-player iframe')).toBeHidden();
+          await expect(page.locator('#bgm-audio')).toBeHidden();
           await expect(page.locator('#bgm-section')).toBeHidden();
         }
         if(stage===1){
