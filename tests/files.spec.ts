@@ -20,9 +20,10 @@ async function startFiles(page:Page){
 test.describe('silent 鳴らせ file picker',()=>{
   test.use({viewport:{width:320,height:568},isMobile:true,hasTouch:true});
 
-  test('the alphabetical list has usable touch rows, and BEPPAN.mp3 succeeds without audio',async({page})=>{
+  test('the shuffled list has usable touch rows, and BEPPAN.mp3 succeeds without audio',async({page})=>{
     const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));await startFiles(page);
-    await expect(page.locator('.music-file > span:last-child')).toHaveText(names);
+    const order=await page.locator('.music-file > span:last-child').allTextContents();
+    expect([...order].sort()).toEqual(names);expect(order).not.toEqual(names);
     const rows=await page.locator('.music-file').all();
     for(const row of rows)expect((await row.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     const canvas=await page.locator('#game-canvas').boundingBox();
@@ -79,11 +80,15 @@ test('all nine missions appear once per shuffled loop, with speed changing after
     Round.prototype.tick=function(){Object.assign(window,{finishScheduleRound:()=>this.end(true,'')});};
   });
   const time=new Date('2026-10-25T15:00:00Z');await page.clock.install({time});await page.clock.pauseAt(new Date(time.getTime()+1000));
-  await page.getByRole('button',{name:'はじめる',exact:true}).click();const titles:string[]=[],fileStages:number[]=[];
+  await page.getByRole('button',{name:'はじめる',exact:true}).click();const titles:string[]=[],fileStages:number[]=[],fileOrders:string[][]=[];
   for(let stage=1;stage<=27;stage++){
     await expect(page.locator('#stage-number')).toHaveText(String(stage).padStart(2,'0'));
     const title=(await page.locator('#mission-title').textContent())!;titles.push(title);
-    if(title==='鳴らせ。')fileStages.push(stage);
+    if(title==='鳴らせ。'){
+      fileStages.push(stage);
+      const order=await page.locator('.music-file > span:last-child').allTextContents();
+      expect([...order].sort()).toEqual(names);fileOrders.push(order);
+    }
     if(stage>1)expect(title).not.toBe(titles[stage-2]);
     await expect(page.locator('#loop-label')).toHaveText(`LOOP 0${Math.floor((stage-1)/9)+1}`);
     await expect(page.locator('#speed-label')).toHaveText(`SPEED ×${(1+Math.floor((stage-1)/9)*.2).toFixed(2)}`);
@@ -93,6 +98,8 @@ test('all nine missions appear once per shuffled loop, with speed changing after
     const loop=titles.slice(i,i+9);expect(new Set(loop).size).toBe(9);expect(loop.filter(title=>title==='鳴らせ。')).toHaveLength(1);
   }
   expect(fileStages.some(stage=>stage%15!==0)).toBe(true);
+  expect(fileOrders).toHaveLength(3);
+  expect(fileOrders[1]).not.toEqual(fileOrders[0]);expect(fileOrders[2]).not.toEqual(fileOrders[1]);
   await expect(page.locator('#stage-number')).toHaveText('28');
   await expect(page.locator('#speed-label')).toHaveText('SPEED ×1.60');
 });

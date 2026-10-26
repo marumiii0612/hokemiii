@@ -42,7 +42,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML=`
         <canvas id="game-canvas" width="720" height="640" tabindex="0" role="img" aria-label="ミニゲームの画面。操作説明と下のボタンでも操作できます。"></canvas>
         <section id="file-picker" class="file-picker" aria-label="音楽フォルダ" hidden inert>
           <div class="file-window-bar"><span class="folder-symbol" aria-hidden="true">▰</span><span>音楽</span><span class="file-window-dots" aria-hidden="true">−　□　×</span></div>
-          <div class="file-address">PC <span>›</span> 音楽 <span class="file-sort">名前 ↑</span></div>
+          <div class="file-address">PC <span>›</span> 音楽 <span class="file-sort">名前</span></div>
           <div id="file-list" class="file-list"></div>
         </section>
         <div id="transition" class="transition" hidden><span id="transition-label" class="eyebrow"></span><div id="pursuer" class="pursuer" hidden><svg viewBox="0 0 100 110" aria-hidden="true"><path d="M18 110v-24q0-26 32-26t32 26v24" fill="#0b1511" stroke="#789075"/><path d="m35 65 15 25 15-25M50 90v20" fill="none" stroke="#92a181"/><ellipse cx="50" cy="34" rx="19" ry="23" fill="#7b8c70"/><path d="M31 31q-3-29 19-28 23 0 19 28l-10-15-15 5Z" fill="#0b1511"/><path d="M56 40h21V27M76 27h5v25h-7" fill="none" stroke="#b4bda0" stroke-width="3"/><path d="M38 35h6m12 0h6" stroke="#18251b" stroke-width="2"/></svg><span>追跡者 / 無線</span></div><strong id="transition-title"></strong><p id="transition-message"></p><div class="transition-mark">${mark}</div></div>
@@ -113,7 +113,7 @@ function nextRound(){
   const m=missions.find(m=>m.id===id)!;
   round=createRound(id,{finish:finishRound},cleared+1);
   el('file-picker').hidden=id!=='files';el('file-picker').inert=true;
-  el('file-list').replaceChildren(...(id==='files'?musicFiles.map((file,index)=>{
+  el('file-list').replaceChildren(...(id==='files'?shuffle(musicFiles.map((file,index)=>({file,index}))).map(({file,index})=>{
     const button=document.createElement('button');button.className='music-file';button.type='button';
     const icon=document.createElement('span');icon.className='music-file-icon';icon.setAttribute('aria-hidden','true');icon.textContent='♫';
     const name=document.createElement('span');name.textContent=file.name;button.append(icon,name);
