@@ -15,7 +15,7 @@ export const missions: { id: GameId; title: string; sub: string; icon: string }[
   {id:'memory',title:'覚えろ',sub:'短時間だけ表示される写真を記憶し、続く質問に答えろ。',icon:'◷'},
   {id:'chase',title:'撒け',sub:'3列の人混みを左右によけ、追っ手を振り切れ。',icon:'⇄'},
   {id:'eat',title:'食べろ',sub:'黄色い和服の大男。10人前のチャーハンを食べ切れ。',icon:'◒'},
-  {id:'files',title:'鳴らせ',sub:'音楽フォルダからbeppan.mp3を開け。',icon:'♫'},
+  {id:'files',title:'鳴らせ',sub:'音楽フォルダからBEPPAN.mp3を開け。',icon:'♫'},
 ];
 export const MISSIONS_PER_LOOP=missions.length;
 

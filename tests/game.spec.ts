@@ -223,7 +223,7 @@ test('complete nine real missions, then accelerate the second loop',async({page}
   await expect(page.locator('#mission-title')).toHaveText('鳴らせ。');
   await expect(page.locator('#loop-label')).toHaveText('LOOP 01');
   await expect(page.locator('#speed-label')).toHaveText('SPEED ×1.00');
-  await page.getByRole('button',{name:'beppan.mp3',exact:true}).click();
+  await page.getByRole('button',{name:'BEPPAN.mp3',exact:true}).click();
   await page.clock.runFor(2400);
   await expect(page.locator('#mission-title')).toHaveText('刺せ。');
   await expect(page.locator('#stage-number')).toHaveText('09');

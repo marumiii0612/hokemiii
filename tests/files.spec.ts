@@ -1,7 +1,7 @@
 import {test,expect,type Page} from '@playwright/test';
 import {watchAudioActivity,audioActivity} from './helpers';
 
-const names=['ayaman.mp3','beppan.mp3','karaoketeppan.mp3','pazyama.mp3','pazyama仮.mp3','pazyama最終.mp3','peppan.mp3','poipoi.mp3','tokyo.mp3','yestokyo.mp3'];
+const names=['BEBBAN.mp3','BEKKAN.mp3','BEPPAM.mp3','BEPPAN.mp3','BEPPAN.mp8','DAKKAN.mp8','FRYPAN.mp3','KEKKAN.mp3','PAJAMA.mp3','PEPPAN.mp3','SENPAN.mp3','SEPPAN.mp3','TAKKAN.mp3','TOPPAN.mp3','YESBGM.mp3','ZEPPAN.mp3','ZESSAN.mp3'];
 
 async function startFiles(page:Page){
   await watchAudioActivity(page);
@@ -20,14 +20,14 @@ async function startFiles(page:Page){
 test.describe('silent 鳴らせ file picker',()=>{
   test.use({viewport:{width:320,height:568},isMobile:true,hasTouch:true});
 
-  test('the alphabetical list has usable touch rows, and beppan succeeds without audio',async({page})=>{
+  test('the alphabetical list has usable touch rows, and BEPPAN.mp3 succeeds without audio',async({page})=>{
     const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));await startFiles(page);
     await expect(page.locator('.music-file > span:last-child')).toHaveText(names);
     const rows=await page.locator('.music-file').all();
     for(const row of rows)expect((await row.boundingBox())!.height).toBeGreaterThanOrEqual(44);
     const canvas=await page.locator('#game-canvas').boundingBox();
     await page.screenshot({path:'/tmp/hokemi-files-mobile.png'});
-    await page.getByRole('button',{name:'beppan.mp3',exact:true}).tap();
+    await page.getByRole('button',{name:'BEPPAN.mp3',exact:true}).tap();
     await expect(page.locator('#transition-title')).toHaveText('任務完了');await expect(page.locator('#result-screen')).toBeHidden();
     expect(await audioActivity(page)).toEqual({contexts:0,elements:0,plays:0});
     expect(await page.locator('#game-canvas').boundingBox()).toEqual(canvas);
@@ -36,8 +36,8 @@ test.describe('silent 鳴らせ file picker',()=>{
   });
 
   for(const scenario of [
-    {name:'pazyama.mp3',home:false},
-    {name:'yestokyo.mp3',home:true},
+    {name:'BEPPAN.mp8',home:false},
+    {name:'BEBBAN.mp3',home:true},
   ]){
     test(`${scenario.name} fails silently and supports immediate navigation`,async({page})=>{
       const errors:string[]=[];page.on('pageerror',error=>errors.push(error.message));await startFiles(page);
@@ -65,7 +65,7 @@ test('every filename keeps its requested outcome without a repeated selection af
       return{name:file.name,finish};
     });
   });
-  expect(outcomes).toEqual(names.map(name=>({name,finish:[name==='beppan.mp3']})));
+  expect(outcomes).toEqual(names.map(name=>({name,finish:[name==='BEPPAN.mp3']})));
 });
 
 test('all nine missions appear once per shuffled loop, with speed changing after nine clears',async({page})=>{
