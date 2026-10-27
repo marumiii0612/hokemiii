@@ -242,16 +242,16 @@ test('complete nine real missions, then accelerate the second loop',async({page}
   expect(errors).toEqual([]);
 });
 
-test('memory questions use time and headcount without requiring color recognition at any speed',async({page})=>{
+test('memory questions use time, headcount and tools without requiring color recognition at any speed',async({page})=>{
   await page.goto('/');
   const cases=await page.evaluate(async()=>{
     const modulePath='/src/games.ts';const {createRound}=await import(/* @vite-ignore */ modulePath);
     const original=Math.random,results=[];
-    const clocks=['10時10分','3時00分','8時20分','12時30分'],people=['5人','6人','7人','8人'];
+    const clocks=['10時10分','3時00分','8時20分','12時30分'],people=['5人','6人','7人','8人'],tools=['スパナ','ハンマー','水平器','ノコギリ'];
     try{
-      for(const stage of [1,10,64])for(const kind of [0,1])for(let variant=0;variant<4;variant++){
+      for(const stage of [1,10,64])for(const kind of [0,1,2])for(let variant=0;variant<4;variant++){
         let sample=0;
-        Math.random=()=>{sample++;return sample===5?kind*.999:(variant+.01)/4;};
+        Math.random=()=>{sample++;return sample===5?(kind+.01)/3:(variant+.01)/4;};
         const verdict:boolean[]=[];
         const game=createRound('memory',{finish:(ok:boolean)=>verdict.push(ok)},stage);
         const before=game.controls().length;
@@ -259,18 +259,18 @@ test('memory questions use time and headcount without requiring color recognitio
         game.tick(3.1/speed);
         const drawn:string[]=[],canvas=document.createElement('canvas'),ctx=canvas.getContext('2d')!;
         ctx.fillText=value=>drawn.push(String(value));game.draw(ctx);
-        const controls=game.controls(),answer=(kind===0?clocks:people)[variant];
+        const controls=game.controls(),answer=[clocks,people,tools][kind][variant];
         game.action(controls.find((control:{label:string})=>control.label===answer)!.action);
         results.push({kind,before,questions:drawn.filter(value=>value.endsWith('？')),options:controls.map((control:{label:string})=>control.label).sort(),verdict});
       }
       return results;
     }finally{Math.random=original;}
   });
-  expect(cases).toHaveLength(24);
+  expect(cases).toHaveLength(36);
   for(const result of cases){
     expect(result.before).toBe(0);expect(result.verdict).toEqual([true]);
-    expect(result.questions).toEqual([result.kind===0?'時計が示していた時刻は？':'写真に写っていたのは何人？']);
-    expect(result.options).toEqual((result.kind===0?['10時10分','3時00分','8時20分','12時30分']:['5人','6人','7人','8人']).sort());
+    expect(result.questions).toEqual([['時計が示していた時刻は？','写真に写っていたのは何人？','整備士が持っていた道具は？'][result.kind]]);
+    expect(result.options).toEqual([['10時10分','3時00分','8時20分','12時30分'],['5人','6人','7人','8人'],['スパナ','ハンマー','水平器','ノコギリ']][result.kind].sort());
   }
 });
 

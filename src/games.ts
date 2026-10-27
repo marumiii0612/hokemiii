@@ -429,32 +429,63 @@ class Aim extends Round {
   }
 }
 
+const memoryTools=['スパナ','ハンマー','水平器','ノコギリ'];
+
 class Memory extends Round {
   id='memory' as const;
-  hint='写真を3秒で覚える。時計と人の数に注目。';
+  hint='写真を3秒で覚える。時計、人の数、整備士の道具に注目。';
   private floor=pick(['#824c46','#7d817c','#b2a083','#647e65']);
   private uniform=pick(['#4b7b9d','#c37d42','#668c67','#dbd8c6']);
   private time=pick([{name:'10時10分',h:10,m:10},{name:'3時00分',h:3,m:0},{name:'8時20分',h:8,m:20},{name:'12時30分',h:12,m:30}]);
   private count=pick([5,6,7,8]);
-  private question=rand(2);private options:string[]=[];private answer='';
+  private question=rand(3);private tool=pick(memoryTools);private options:string[]=[];private answer='';
   private viewTime=3;
   constructor(api:Api,stage:number){
     super(api,stage);this.viewTime=3/this.speed;this.duration=10/this.speed;
     const data=[
       {answer:this.time.name,options:['10時10分','3時00分','8時20分','12時30分']},
       {answer:`${this.count}人`,options:['5人','6人','7人','8人']},
+      {answer:this.tool,options:memoryTools},
     ][this.question];
     this.answer=data.answer;this.options=shuffle(data.options);
   }
   controls(){return this.elapsed<this.viewTime?[]:this.options.map((label,i)=>({label,action:`choice-${i}`,key:String(i+1)}));}
   action(s:string){if(this.elapsed<this.viewTime||!s.startsWith('choice-'))return;const yes=this.options[Number(s.slice(7))]===this.answer;this.end(yes,yes?'記憶は、正確だった。':'記憶が一致しなかった。');}
+  private drawTool(c:CanvasRenderingContext2D){
+    c.save();c.translate(166,483);c.rotate(.22);c.scale(1.2,1.2);
+    if(this.tool==='スパナ'){
+      line(c,[[0,15],[0,-33]],'#263a38',11);line(c,[[0,15],[0,-33]],'#d8e2dc',7);
+      c.beginPath();
+      [[-7,-30],[-15,-41],[-10,-57],[-5,-43],[5,-43],[10,-57],[15,-41],[7,-30]].forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));
+      c.closePath();c.fillStyle='#e2e9e2';c.fill();c.strokeStyle='#263a38';c.lineWidth=2;c.stroke();
+      circle(c,0,15,6,'#e2e9e2');circle(c,0,15,2.5,'#263a38');
+    }else if(this.tool==='ハンマー'){
+      rect(c,-5,-39,10,59,'#27332f',3);rect(c,-3,-35,6,53,'#c6a67b',2);
+      c.beginPath();
+      [[-23,-49],[17,-49],[28,-40],[20,-39],[14,-43],[14,-34],[-23,-34]].forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));
+      c.closePath();c.fillStyle='#dbe3de';c.fill();c.strokeStyle='#263a38';c.lineWidth=2;c.stroke();
+      line(c,[[-18,-46],[-18,-37]],'#65766e',2);
+    }else if(this.tool==='水平器'){
+      rect(c,-9,-18,83,26,'#263a38',4);rect(c,-7,-16,79,22,'#e0dcc9',3);
+      rect(c,13,-12,31,14,'#33443b',3);rect(c,15,-10,27,10,'#eff3df',2);
+      line(c,[[23,-10],[23,0]],'#34453a',1.5);line(c,[[34,-10],[34,0]],'#34453a',1.5);
+      circle(c,28.5,-5,3,'#35483b',true,1.5);
+      rect(c,-1,-11,8,12,'#42544a',2);rect(c,53,-11,11,12,'#42544a',2);
+    }else{
+      c.beginPath();c.moveTo(5,-9);c.lineTo(58,-55);c.lineTo(77,-29);
+      for(let i=0;i<8;i++){c.lineTo(77-i*8.5,-23+i*5.5);c.lineTo(69-i*8.5,-24+i*5.5);}
+      c.lineTo(5,16);c.closePath();c.fillStyle='#dbe3de';c.fill();c.strokeStyle='#263a38';c.lineWidth=2;c.stroke();
+      rect(c,-13,-11,25,34,'#263a38',6);rect(c,-11,-9,21,30,'#c6a67b',5);rect(c,-6,-4,10,20,'#263a38',3);
+    }
+    circle(c,0,0,5,'#b79475');c.restore();
+  }
   draw(c:CanvasRenderingContext2D){
     const viewing=this.elapsed<this.viewTime;
-    this.hint=viewing?`写真を${this.viewTime.toFixed(1)}秒で覚える。時計と人の数に注目。`:'正しい答えをひとつ選ぶ';
+    this.hint=viewing?`写真を${this.viewTime.toFixed(1)}秒で覚える。時計、人の数、整備士の道具に注目。`:'正しい答えをひとつ選ぶ';
     rect(c,0,0,W,H,'#1c231e');
     if(!viewing){
       grid(c,48,'#253229');
-      const questions=['時計が示していた時刻は？','写真に写っていたのは何人？'];
+      const questions=['時計が示していた時刻は？','写真に写っていたのは何人？','整備士が持っていた道具は？'];
       text(c,'?',360,292,116,'#485a47');
       text(c,questions[this.question],360,423,30,C.paper,'center',600);
       return;
@@ -500,12 +531,7 @@ class Memory extends Round {
     rect(c,120,406,38,8,this.uniform,3);rect(c,144,410,23,4,this.uniform,2);
     rect(c,126,445,9,12,'#d8dec680',1);rect(c,143,445,9,12,'#d8dec650',1);
     line(c,[[125,481],[153,481]],'#37463e',4);
-    c.save();c.translate(166,483);c.rotate(.35);
-    line(c,[[0,12],[0,-33]],'#263a38',10);line(c,[[0,12],[0,-33]],'#d8e2dc',6);
-    c.beginPath();
-    [[-7,-30],[-14,-40],[-10,-53],[-5,-41],[5,-41],[10,-53],[14,-40],[7,-30]].forEach(([x,y],i)=>i?c.lineTo(x,y):c.moveTo(x,y));
-    c.closePath();c.fillStyle='#e2e9e2';c.fill();
-    circle(c,0,13,5,'#e2e9e2');circle(c,0,13,2,'#4b6259');c.restore();
+    this.drawTool(c);
     c.restore();
     text(c,`残り ${Math.max(1,Math.ceil(this.viewTime-this.elapsed))} 秒`,360,611,18,C.gold);vignette(c);
   }
