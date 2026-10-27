@@ -39,7 +39,7 @@ test('memory failure does not reveal the correct answer and supports immediate r
   await page.goto('/');
   await page.evaluate(()=>{
     let sample=0;
-    // Put memory first in the shuffle, then use the red-floor photo.
+    // Put memory first in the shuffle, then use the 10:10 clock photo.
     Math.random=()=>{sample++;return sample>=5&&sample<=8?.999:0;};
   });
   await page.clock.install();
@@ -47,11 +47,11 @@ test('memory failure does not reveal the correct answer and supports immediate r
   await page.clock.runFor(1300);
   await expect(page.locator('#mission-title')).toHaveText('覚えろ。');
   await page.clock.runFor(3100);
-  await page.locator('#controls').getByRole('button',{name:'グレー',exact:true}).click();
+  await page.locator('#controls').getByRole('button',{name:'3時00分',exact:true}).click();
   await expect(page.locator('#result-screen h1')).toHaveText('任務失敗。');
   await expect(page.locator('#result-message')).toBeEmpty();
   await expect(page.locator('#result-message')).toBeHidden();
-  await expect(page.locator('#result-screen')).not.toContainText('深い赤');
+  await expect(page.locator('#result-screen')).not.toContainText('10時10分');
   await expect(page.locator('#result-screen')).not.toContainText('正解');
   await expect(page.locator('#final-score')).toHaveText('0');
   await expect(page.locator('#result-rank')).toHaveText('あなたはKEKKANです');
@@ -213,7 +213,7 @@ test('complete nine real missions, then accelerate the second loop',async({page}
   await page.keyboard.press('Space');
   await page.clock.runFor(6000);
   await expect(page.locator('#mission-title')).toHaveText('覚えろ。');
-  await page.locator('#controls').getByRole('button',{name:'深い赤'}).click();
+  await page.locator('#controls').getByRole('button',{name:'10時10分'}).click();
   await page.clock.runFor(2400);
   await expect(page.locator('#mission-title')).toHaveText('撒け。');
   await page.keyboard.press('ArrowLeft');await page.clock.runFor(8700);await page.clock.runFor(2400);
@@ -240,6 +240,38 @@ test('complete nine real missions, then accelerate the second loop',async({page}
   await expect(page.locator('#speed-label')).toHaveText('SPEED ×1.20');
   expect(await audioActivity(page)).toEqual({contexts:0,elements:0,plays:0});
   expect(errors).toEqual([]);
+});
+
+test('memory questions use time and headcount without requiring color recognition at any speed',async({page})=>{
+  await page.goto('/');
+  const cases=await page.evaluate(async()=>{
+    const modulePath='/src/games.ts';const {createRound}=await import(/* @vite-ignore */ modulePath);
+    const original=Math.random,results=[];
+    const clocks=['10時10分','3時00分','8時20分','12時30分'],people=['5人','6人','7人','8人'];
+    try{
+      for(const stage of [1,10,64])for(const kind of [0,1])for(let variant=0;variant<4;variant++){
+        let sample=0;
+        Math.random=()=>{sample++;return sample===5?kind*.999:(variant+.01)/4;};
+        const verdict:boolean[]=[];
+        const game=createRound('memory',{finish:(ok:boolean)=>verdict.push(ok)},stage);
+        const before=game.controls().length;
+        const speed=Math.min(2.4,1+Math.floor((stage-1)/9)*.2);
+        game.tick(3.1/speed);
+        const drawn:string[]=[],canvas=document.createElement('canvas'),ctx=canvas.getContext('2d')!;
+        ctx.fillText=value=>drawn.push(String(value));game.draw(ctx);
+        const controls=game.controls(),answer=(kind===0?clocks:people)[variant];
+        game.action(controls.find((control:{label:string})=>control.label===answer)!.action);
+        results.push({kind,before,questions:drawn.filter(value=>value.endsWith('？')),options:controls.map((control:{label:string})=>control.label).sort(),verdict});
+      }
+      return results;
+    }finally{Math.random=original;}
+  });
+  expect(cases).toHaveLength(24);
+  for(const result of cases){
+    expect(result.before).toBe(0);expect(result.verdict).toEqual([true]);
+    expect(result.questions).toEqual([result.kind===0?'時計が示していた時刻は？':'写真に写っていたのは何人？']);
+    expect(result.options).toEqual((result.kind===0?['10時10分','3時00分','8時20分','12時30分']:['5人','6人','7人','8人']).sort());
+  }
 });
 
 test('each mission has functional success, failure and escalating speed',async({page})=>{
@@ -276,7 +308,7 @@ test('each mission has functional success, failure and escalating speed',async({
       const maxKnock=run('knock',65);for(let i=0;i<168;i++)maxKnock.game.tick(.01);for(let i=0;i<9;i++)maxKnock.game.action('primary');
       results.knockAllowsNine=maxKnock.verdict.length===0;maxKnock.game.action('primary');results.knockRejectsTen=maxKnock.verdict[0]?.ok===false;
       Math.random=()=>0;
-      const memory=run('memory');memory.game.action('choice-0');results.memoryHidden=memory.verdict.length===0;for(let i=0;i<310;i++)memory.game.tick(.01);memory.game.action('choice-0');results.memory=memory.verdict[0]?.ok===false; // shuffled first choice is gray, not red
+      const memory=run('memory');memory.game.action('choice-0');results.memoryHidden=memory.verdict.length===0;for(let i=0;i<310;i++)memory.game.tick(.01);memory.game.action('choice-0');results.memory=memory.verdict[0]?.ok===false; // shuffled first choice is 3:00, not 10:10
       results.speeds=[1,10,19,28].map(stage=>Number(run('eat',stage).game.duration.toFixed(3)));
       // Every Japanese geographic anomaly can be recognized and selected.
       results.maps=[];

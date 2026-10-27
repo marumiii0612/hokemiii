@@ -431,18 +431,16 @@ class Aim extends Round {
 
 class Memory extends Round {
   id='memory' as const;
-  hint='写真を3秒で覚える。服、床、時計、人の数に注目。';
-  private floor=pick([{name:'深い赤',hex:'#824c46'},{name:'グレー',hex:'#7d817c'},{name:'ベージュ',hex:'#b2a083'},{name:'緑',hex:'#647e65'}]);
-  private uniform=pick([{name:'青',hex:'#4b7b9d'},{name:'オレンジ',hex:'#c37d42'},{name:'緑',hex:'#668c67'},{name:'白',hex:'#dbd8c6'}]);
+  hint='写真を3秒で覚える。時計と人の数に注目。';
+  private floor=pick(['#824c46','#7d817c','#b2a083','#647e65']);
+  private uniform=pick(['#4b7b9d','#c37d42','#668c67','#dbd8c6']);
   private time=pick([{name:'10時10分',h:10,m:10},{name:'3時00分',h:3,m:0},{name:'8時20分',h:8,m:20},{name:'12時30分',h:12,m:30}]);
   private count=pick([5,6,7,8]);
-  private question=rand(4);private options:string[]=[];private answer='';
+  private question=rand(2);private options:string[]=[];private answer='';
   private viewTime=3;
   constructor(api:Api,stage:number){
     super(api,stage);this.viewTime=3/this.speed;this.duration=10/this.speed;
     const data=[
-      {answer:this.floor.name,options:['深い赤','グレー','ベージュ','緑']},
-      {answer:this.uniform.name,options:['青','オレンジ','緑','白']},
       {answer:this.time.name,options:['10時10分','3時00分','8時20分','12時30分']},
       {answer:`${this.count}人`,options:['5人','6人','7人','8人']},
     ][this.question];
@@ -452,11 +450,11 @@ class Memory extends Round {
   action(s:string){if(this.elapsed<this.viewTime||!s.startsWith('choice-'))return;const yes=this.options[Number(s.slice(7))]===this.answer;this.end(yes,yes?'記憶は、正確だった。':'記憶が一致しなかった。');}
   draw(c:CanvasRenderingContext2D){
     const viewing=this.elapsed<this.viewTime;
-    this.hint=viewing?`写真を${this.viewTime.toFixed(1)}秒で覚える。服、床、時計、人の数に注目。`:'正しい答えをひとつ選ぶ';
+    this.hint=viewing?`写真を${this.viewTime.toFixed(1)}秒で覚える。時計と人の数に注目。`:'正しい答えをひとつ選ぶ';
     rect(c,0,0,W,H,'#1c231e');
     if(!viewing){
       grid(c,48,'#253229');
-      const questions=['階段・床の色は？','整備士の服の色は？','時計が示していた時刻は？','写真に写っていたのは何人？'];
+      const questions=['時計が示していた時刻は？','写真に写っていたのは何人？'];
       text(c,'?',360,292,116,'#485a47');
       text(c,questions[this.question],360,423,30,C.paper,'center',600);
       return;
@@ -471,7 +469,7 @@ class Memory extends Round {
     line(c,[[563,151],[563+Math.sin(ha)*22,151-Math.cos(ha)*22]],'#27372d',4);
     line(c,[[563,151],[563+Math.sin(ma)*31,151-Math.cos(ma)*31]],'#27372d',2);
     c.save();c.beginPath();c.rect(50,81,620,487);c.clip();
-    const shade=(factor:number)=>`rgb(${[1,3,5].map(i=>Math.round(parseInt(this.floor.hex.slice(i,i+2),16)*factor)).join(',')})`;
+    const shade=(factor:number)=>`rgb(${[1,3,5].map(i=>Math.round(parseInt(this.floor.slice(i,i+2),16)*factor)).join(',')})`;
     rect(c,50,296,620,272,shade(.78));
     for(let i=0;i<6;i++){
       const x=140-i*18,y=296+i*42,right=720-x;
@@ -498,8 +496,8 @@ class Memory extends Round {
       c.save();c.translate(x,y);line(c,[[0,-53],[0,-29]],'#d8d6c0',4);line(c,[[0,-47],[0,-29]],'#7d413c',2);c.restore();
     }
     c.beginPath();c.ellipse(139,525,27,8,0,0,Math.PI*2);c.fillStyle='#17201766';c.fill();
-    person(c,139,508,1.05,this.uniform.hex,'#b79475');
-    rect(c,120,406,38,8,this.uniform.hex,3);rect(c,144,410,23,4,this.uniform.hex,2);
+    person(c,139,508,1.05,this.uniform,'#b79475');
+    rect(c,120,406,38,8,this.uniform,3);rect(c,144,410,23,4,this.uniform,2);
     rect(c,126,445,9,12,'#d8dec680',1);rect(c,143,445,9,12,'#d8dec650',1);
     line(c,[[125,481],[153,481]],'#37463e',4);
     c.save();c.translate(166,483);c.rotate(.35);
